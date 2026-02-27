@@ -403,6 +403,33 @@ function computeFmvFromInputs(
   };
 }
 
+function classifyPriceSignalFromRange(
+  askPrice: number | null | undefined,
+  marketRange: { low: number; mid: number; high: number }
+) {
+  if (askPrice == null) return 'At market';
+  if (askPrice < marketRange.mid * 0.9) return 'Under market';
+  if (askPrice > marketRange.mid * 1.1) return 'Over market';
+  return 'At market';
+}
+
+function applyPriceDealPenalty(input: {
+  score10: number;
+  askPrice?: number | null;
+  marketRange: { low: number; mid: number; high: number };
+}) {
+  if (input.askPrice == null || input.marketRange.mid <= 0) return input.score10;
+  const ratio = input.askPrice / input.marketRange.mid;
+  let adjusted = input.score10;
+
+  if (ratio > 1) adjusted -= Math.min((ratio - 1) * 4.5, 3.5);
+  if (input.askPrice > input.marketRange.high) adjusted = Math.min(adjusted, 4.8);
+  if (ratio >= 1.35) adjusted = Math.min(adjusted, 3.8);
+  if (ratio >= 1.6) adjusted = Math.min(adjusted, 2.8);
+
+  return clamp(Math.round(adjusted * 10) / 10, 1, 10);
+}
+
 function compositeMarketplaceScore(input: {
   askPrice?: number | null;
   fairMarketValue: number;
@@ -456,7 +483,7 @@ function toFallbackSearchResults(input: {
     const valuation = computeFmvFromInputs(l.msrp || l.price, l.category, l.condition);
     const sellerTenureMonths = 6 + (smallHash(`${l.id}-tenure`) % 60);
     const estimatedDistanceMiles = 15 + (smallHash(l.id) % 120);
-    const score10 = compositeMarketplaceScore({
+    const rawScore = compositeMarketplaceScore({
       askPrice: l.price,
       fairMarketValue: valuation.fairMarketValue,
       reputationScore5: l.rating,
@@ -464,12 +491,12 @@ function toFallbackSearchResults(input: {
       distanceMiles: estimatedDistanceMiles,
       sourceFetched: false
     });
-    const priceSignal =
-      l.price < valuation.marketRange.mid * 0.9
-        ? 'Under market'
-        : l.price > valuation.marketRange.mid * 1.1
-          ? 'Over market'
-          : 'At market';
+    const priceSignal = classifyPriceSignalFromRange(l.price, valuation.marketRange);
+    const score10 = applyPriceDealPenalty({
+      score10: rawScore,
+      askPrice: l.price,
+      marketRange: valuation.marketRange
+    });
 
     return {
       id: `fallback-${l.id}`,
@@ -870,7 +897,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
         Audio: 0.95
       };
       const normalizedAsk = Number.isFinite(parsedAsk) && parsedAsk > 0 ? parsedAsk : null;
-      const fallbackScore = compositeMarketplaceScore({
+      const fallbackRawScore = compositeMarketplaceScore({
         askPrice: normalizedAsk,
         fairMarketValue: valuation.fairMarketValue,
         reputationScore5: partRating5,
@@ -878,6 +905,19 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
         distanceMiles: estimatedDistanceMiles,
         sourceFetched: false
       });
+      const fallbackPriceSignal = classifyPriceSignalFromRange(normalizedAsk, valuation.marketRange);
+      const fallbackScore = applyPriceDealPenalty({
+        score10: fallbackRawScore,
+        askPrice: normalizedAsk,
+        marketRange: valuation.marketRange
+      });
+      const fallbackRiskFlags = [
+        'Live listing metadata unavailable on static-host mode.',
+        'Verify seller profile, photos, serial numbers, and fitment before payment.'
+      ];
+      if (fallbackPriceSignal === 'Over market') {
+        fallbackRiskFlags.unshift('Ask price is above estimated FMV range. Negotiate or skip this listing.');
+      }
       setAnalysis({
         platform: 'Facebook Marketplace',
         sourceFetched: false,
@@ -897,17 +937,14 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           },
           fairMarketValue: valuation.fairMarketValue,
           marketRange: valuation.marketRange,
-          priceSignal: valuation.priceSignal
+          priceSignal: fallbackPriceSignal
         },
         partCategory: selectedCategory,
         partCondition: selectedCondition,
         sellerTenureMonths,
         estimatedDistanceMiles,
         partRating5,
-        riskFlags: [
-          'Live listing metadata unavailable on static-host mode.',
-          'Verify seller profile, photos, serial numbers, and fitment before payment.'
-        ],
+        riskFlags: fallbackRiskFlags,
         score10: clamp(fallbackScore, 1, 10)
       });
       setApiError(null);

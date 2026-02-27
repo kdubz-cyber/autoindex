@@ -155,6 +155,19 @@ function classifyPriceSignal(price, marketRange) {
   return 'At market';
 }
 
+function applyPriceDealPenalty(score10, price, marketRange) {
+  if (price == null || !marketRange?.mid) return score10;
+  const ratio = price / marketRange.mid;
+  let adjusted = score10;
+
+  if (ratio > 1) adjusted -= Math.min((ratio - 1) * 4.5, 3.5);
+  if (price > marketRange.high) adjusted = Math.min(adjusted, 4.8);
+  if (ratio >= 1.35) adjusted = Math.min(adjusted, 3.8);
+  if (ratio >= 1.6) adjusted = Math.min(adjusted, 2.8);
+
+  return Math.round(clamp(adjusted, 1, 10) * 10) / 10;
+}
+
 function priceFitNorm(price, marketRangeMid) {
   if (price == null || !marketRangeMid) return 0.62;
   const delta = Math.abs(price - marketRangeMid) / marketRangeMid;
@@ -225,7 +238,7 @@ function scoreMarketListing({
     hasTitle: Boolean(title),
     hasBuyerGeo
   });
-  const score10 = compositeScore10({
+  const rawScore10 = compositeScore10({
     repScoreNorm,
     demandNorm,
     distanceNorm,
@@ -233,11 +246,13 @@ function scoreMarketListing({
     priceNorm,
     confidenceNorm
   });
+  const score10 = applyPriceDealPenalty(rawScore10, price, marketRange);
 
   const riskFlags = [];
   if (sellerTenureMonths < 6) riskFlags.push('Seller presence appears relatively new.');
   if (distanceMiles > 90) riskFlags.push('Long pickup distance increases risk and friction.');
   if (priceSignal === 'Under market') riskFlags.push('Price is below market; verify authenticity and condition.');
+  if (priceSignal === 'Over market') riskFlags.push('Ask price is above estimated FMV range.');
   if (price != null && Math.abs(price - marketRange.mid) / marketRange.mid > 0.35) {
     riskFlags.push('Ask price deviates significantly from FMV estimate.');
   }
@@ -630,6 +645,7 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
   if (sellerTenureMonths < 6) riskFlags.push('Seller presence appears relatively new.');
   if (distance > 90) riskFlags.push('Long pickup distance increases risk and friction.');
   if (priceSignal === 'Under market') riskFlags.push('Price is below market; verify authenticity and condition.');
+  if (priceSignal === 'Over market') riskFlags.push('Ask price is above estimated FMV range.');
   if (comparedAsk != null && Math.abs(comparedAsk - marketRange.mid) / marketRange.mid > 0.35) {
     riskFlags.push('Ask price deviates significantly from FMV estimate.');
   }
@@ -647,7 +663,7 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
     hasTitle: Boolean(resolvedTitle && resolvedTitle !== 'Unknown part'),
     hasBuyerGeo: Boolean(buyerGeo)
   });
-  const score10 = compositeScore10({
+  const rawScore10 = compositeScore10({
     repScoreNorm,
     demandNorm,
     distanceNorm,
@@ -655,6 +671,7 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
     priceNorm,
     confidenceNorm
   });
+  const score10 = applyPriceDealPenalty(rawScore10, comparedAsk, marketRange);
 
   res.json({
     platform: meta.platform,
