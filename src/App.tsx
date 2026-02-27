@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const HAS_API_BASE = Boolean(API_BASE_URL);
 
 type Tab = 'Valuation' | 'Marketplace' | 'Vendors' | 'Learn' | 'Sell' | 'Dashboard';
 
@@ -351,6 +352,111 @@ function scoreToLabel(score10: number) {
   };
 }
 
+type MarketplaceSearchResult = {
+  id: string;
+  title: string;
+  url?: string | null;
+  price?: number | null;
+  valuation: {
+    fairMarketValue: number;
+    marketRange: { low: number; mid: number; high: number };
+    priceSignal: string;
+  };
+  intelligence: {
+    score10: number;
+    estimatedDistanceMiles: number;
+    partReputation: { score5: number };
+    riskFlags: string[];
+  };
+};
+
+function computeFmvFromInputs(
+  baseAnchor: number,
+  category: Category,
+  condition: Condition
+): MarketplaceSearchResult['valuation'] {
+  const af = condition === 'New' ? 0.95 : condition === 'Aftermarket' ? 0.8 : 0.7;
+  const cf = condition === 'New' ? 1 : condition === 'Aftermarket' ? 0.75 : 0.65;
+  const avf = 1.1;
+  const demandMap: Record<Category, number> = {
+    Engine: 1.1,
+    Suspension: 1.0,
+    Transmission: 1.05,
+    Brakes: 1.1,
+    Rims: 1.05,
+    Tires: 1.0,
+    Exhaust: 1.05,
+    Chassis: 1.0,
+    Audio: 0.95
+  };
+  const mdf = demandMap[category];
+  const fmv = Math.round(baseAnchor * af * cf * avf * mdf);
+  const marketRange = {
+    low: Math.round(fmv * 0.88),
+    mid: fmv,
+    high: Math.round(fmv * 1.18)
+  };
+  return {
+    fairMarketValue: fmv,
+    marketRange,
+    priceSignal: 'At market'
+  };
+}
+
+function toFallbackSearchResults(input: {
+  query: string;
+  category: Category;
+  condition: Condition;
+  priceMin?: number;
+  priceMax?: number;
+}): MarketplaceSearchResult[] {
+  const q = input.query.trim().toLowerCase();
+  const filtered = MOCK_LISTINGS.filter((l) => {
+    const queryHit =
+      !q ||
+      l.title.toLowerCase().includes(q) ||
+      l.brand.toLowerCase().includes(q) ||
+      l.fitment.toLowerCase().includes(q) ||
+      l.category.toLowerCase().includes(q);
+    const categoryHit = l.category === input.category;
+    const conditionHit = l.condition === input.condition;
+    const minHit = input.priceMin == null || l.price >= input.priceMin;
+    const maxHit = input.priceMax == null || l.price <= input.priceMax;
+    return queryHit && categoryHit && conditionHit && minHit && maxHit;
+  });
+
+  const pool = (filtered.length ? filtered : MOCK_LISTINGS.filter((l) => l.category === input.category)).slice(0, 8);
+
+  return pool.map((l) => {
+    const valuation = computeFmvFromInputs(l.msrp || l.price, l.category, l.condition);
+    const delta = Math.abs(l.price - valuation.fairMarketValue) / Math.max(valuation.fairMarketValue, 1);
+    const score10 = Math.round(clamp((l.rating / 5) * 6 + (1 - delta) * 4, 1, 9.9) * 10) / 10;
+    const priceSignal =
+      l.price < valuation.marketRange.mid * 0.9
+        ? 'Under market'
+        : l.price > valuation.marketRange.mid * 1.1
+          ? 'Over market'
+          : 'At market';
+
+    return {
+      id: `fallback-${l.id}`,
+      title: `${l.title} (Demo signal)`,
+      url: null,
+      price: l.price,
+      valuation: {
+        ...valuation,
+        priceSignal
+      },
+      intelligence: {
+        score10,
+        estimatedDistanceMiles: 15 + (smallHash(l.id) % 120),
+        partReputation: { score5: l.rating },
+        riskFlags: l.condition === 'Used' ? ['Used part: verify photos, serial, and fitment before purchase.'] : []
+      }
+    };
+  });
+}
+
 function useLocalStorageState<T>(key: string, fallback: T) {
   const [state, setState] = useState<T>(() => {
     try {
@@ -651,14 +757,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
     mode: string;
   }>(null);
   const [searchResults, setSearchResults] = useState<
-    Array<{
-      id: string;
-      title: string;
-      url?: string | null;
-      price?: number | null;
-      valuation: { fairMarketValue: number; marketRange: { low: number; mid: number; high: number }; priceSignal: string };
-      intelligence: { score10: number; estimatedDistanceMiles: number; partReputation: { score5: number }; riskFlags: string[] };
-    }>
+    MarketplaceSearchResult[]
   >([]);
 
   const [analysis, setAnalysis] = useState<null | {
@@ -695,6 +794,10 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
   const canSearch = searchQuery.trim().length > 1;
 
   useEffect(() => {
+    if (!HAS_API_BASE) {
+      setBackendStatus(null);
+      return;
+    }
     const loadStatus = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/api/system/status`, { credentials: 'include' });
@@ -713,6 +816,61 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
   }, []);
 
   const run = async () => {
+    if (!HAS_API_BASE) {
+      const parsedAsk = Number(String(askPrice).replace(/[^0-9.]/g, ''));
+      const fallbackBase = Number.isFinite(parsedAsk) && parsedAsk > 0 ? parsedAsk : 450 + CATEGORIES.indexOf(selectedCategory) * 35;
+      const valuation = computeFmvFromInputs(fallbackBase, selectedCategory, selectedCondition);
+      const formulaAgeFactor = selectedCondition === 'New' ? 0.95 : selectedCondition === 'Aftermarket' ? 0.8 : 0.7;
+      const formulaConditionFactor = selectedCondition === 'New' ? 1 : selectedCondition === 'Aftermarket' ? 0.75 : 0.65;
+      const demandMap: Record<Category, number> = {
+        Engine: 1.1,
+        Suspension: 1.0,
+        Transmission: 1.05,
+        Brakes: 1.1,
+        Rims: 1.05,
+        Tires: 1.0,
+        Exhaust: 1.05,
+        Chassis: 1.0,
+        Audio: 0.95
+      };
+      const fallbackScore = Math.round((5.8 + (smallHash(`${link}|${selectedCategory}|${selectedCondition}`) % 34) / 10) * 10) / 10;
+      setAnalysis({
+        platform: 'Facebook Marketplace',
+        sourceFetched: false,
+        listing: {
+          title: partTitle.trim() || 'Marketplace listing',
+          askPrice: Number.isFinite(parsedAsk) && parsedAsk > 0 ? parsedAsk : null,
+          detectedPrice: null,
+          locationText: null
+        },
+        valuation: {
+          formula: {
+            baseAnchor: fallbackBase,
+            ageFactor: formulaAgeFactor,
+            conditionFactor: formulaConditionFactor,
+            availabilityFactor: 1.1,
+            marketDemandFactor: demandMap[selectedCategory]
+          },
+          fairMarketValue: valuation.fairMarketValue,
+          marketRange: valuation.marketRange,
+          priceSignal: valuation.priceSignal
+        },
+        partCategory: selectedCategory,
+        partCondition: selectedCondition,
+        sellerTenureMonths: 4 + (smallHash(link) % 72),
+        estimatedDistanceMiles: 10 + (smallHash(`${buyerZip}|${link}`) % 140),
+        partRating5: 3.8 + (smallHash(`${selectedCategory}|${partTitle}`) % 11) / 10,
+        riskFlags: [
+          'Live listing metadata unavailable on static-host mode.',
+          'Verify seller profile, photos, serial numbers, and fitment before payment.'
+        ],
+        score10: clamp(fallbackScore, 1, 9.8)
+      });
+      setApiError(null);
+      toast('Analysis complete (demo mode)');
+      return;
+    }
+
     setLoading(true);
     setApiError(null);
     try {
@@ -774,6 +932,25 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
   };
 
   const runFacebookSearch = async () => {
+    const parsedMin = Number(searchPriceMin);
+    const parsedMax = Number(searchPriceMax);
+    const min = searchPriceMin.trim() && Number.isFinite(parsedMin) ? parsedMin : undefined;
+    const max = searchPriceMax.trim() && Number.isFinite(parsedMax) ? parsedMax : undefined;
+
+    if (!HAS_API_BASE) {
+      const fallbackResults = toFallbackSearchResults({
+        query: searchQuery,
+        category: selectedCategory,
+        condition: selectedCondition,
+        priceMin: min,
+        priceMax: max
+      });
+      setSearchResults(fallbackResults);
+      setSearchError(null);
+      toast(`Loaded ${fallbackResults.length} marketplace results (demo mode)`);
+      return;
+    }
+
     setSearchLoading(true);
     setSearchError(null);
     try {
@@ -784,8 +961,8 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           q: searchQuery.trim(),
           categories: [selectedCategory],
           listingCountries: ['US'],
-          priceMin: searchPriceMin.trim() || undefined,
-          priceMax: searchPriceMax.trim() || undefined,
+          priceMin: min,
+          priceMax: max,
           sort: 'newest_to_oldest',
           partCategory: selectedCategory,
           partCondition: selectedCondition,
@@ -830,9 +1007,9 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
             </div>
           ) : null}
           {!backendStatus ? (
-            <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
-              Backend not reachable from this frontend. Set `VITE_API_BASE_URL` to your deployed API and allow this
-              origin in backend `ALLOWED_ORIGINS`.
+            <div className="mb-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
+              Running in demo mode on GitHub Pages. Marketplace analysis/search uses local fallback signals until
+              backend API is connected.
             </div>
           ) : null}
           <div className="flex items-start justify-between gap-4">
