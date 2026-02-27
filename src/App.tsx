@@ -109,20 +109,13 @@ type SavedValuation = {
 
 type UserRole = 'individual' | 'vendor' | 'admin';
 
-type StoredUser = {
-  id: string;
-  username: string;
-  password: string;
-  role: UserRole;
-  vendorId?: string;
-  createdAt: number;
-};
-
 type SessionUser = {
   id: string;
   username: string;
   role: UserRole;
   vendorId?: string;
+  vendorName?: string;
+  vendorLocation?: string;
 };
 
 type OrderRecord = {
@@ -319,8 +312,6 @@ const MARKET_DEMAND_FACTORS: Array<{ key: DemandKey; label: string; factor: numb
   { key: 'cult_track_proven', label: 'Cult / Track Proven', factor: 1.2 }
 ];
 
-const ADMIN_USERNAME = 'sino0491';
-const ADMIN_PASSWORD = 'Ktrill20!';
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -966,8 +957,7 @@ export default function App() {
   const [saved, setSaved] = useLocalStorageState<string[]>('autoindex_saved_items', []);
   const [cart, setCart] = useLocalStorageState<string[]>('autoindex_cart_items', []);
   const [valuations, setValuations] = useLocalStorageState<SavedValuation[]>('autoindex_valuations', []);
-  const [users, setUsers] = useLocalStorageState<StoredUser[]>('autoindex_users', []);
-  const [session, setSession] = useLocalStorageState<SessionUser | null>('autoindex_session', null);
+  const [session, setSession] = useState<SessionUser | null>(null);
   const [extraVendors, setExtraVendors] = useLocalStorageState<Vendor[]>('autoindex_extra_vendors', []);
   const [userListings, setUserListings] = useLocalStorageState<Listing[]>('autoindex_user_listings', []);
   const [orders, setOrders] = useLocalStorageState<OrderRecord[]>('autoindex_orders', []);
@@ -1006,20 +996,38 @@ export default function App() {
   );
 
   useEffect(() => {
-    setUsers((prev) => {
-      if (prev.some((u) => u.username === ADMIN_USERNAME)) return prev;
-      return [
-        ...prev,
-        {
-          id: `admin-${Date.now()}`,
-          username: ADMIN_USERNAME,
-          password: ADMIN_PASSWORD,
-          role: 'admin',
-          createdAt: Date.now()
+    const hydrateSession = async () => {
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        if (!res.ok) {
+          setSession(null);
+          return;
         }
-      ];
-    });
-  }, [setUsers]);
+        const data = (await res.json()) as { user: SessionUser };
+        setSession(data.user);
+        if (data.user.role === 'vendor' && data.user.vendorId) {
+          setExtraVendors((prev) => {
+            if (prev.some((v) => v.id === data.user.vendorId)) return prev;
+            return [
+              ...prev,
+              {
+                id: data.user.vendorId,
+                name: data.user.vendorName ?? `${data.user.username} Performance`,
+                location: data.user.vendorLocation ?? 'Unknown, USA',
+                rating: 5,
+                reviews: 0,
+                verified: false,
+                fastShip: false
+              }
+            ];
+          });
+        }
+      } catch {
+        setSession(null);
+      }
+    };
+    hydrateSession();
+  }, [setExtraVendors]);
 
   useEffect(() => {
     if (session?.role === 'vendor' && !session.vendorId) {
@@ -1086,67 +1094,96 @@ export default function App() {
     };
   }, [ageBand, availabilityLevel, baseAnchor, conditionGrade, demandLevel, partType]);
 
-  const login = () => {
+  const login = async () => {
     const username = authUsername.trim();
     if (!username || !authPassword) {
       toast('Enter username and password');
       return;
     }
-    const match = users.find((u) => u.username.toLowerCase() === username.toLowerCase() && u.password === authPassword);
-    if (!match) {
-      toast('Invalid login credentials');
-      return;
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password: authPassword })
+      });
+      const data = (await res.json()) as { user?: SessionUser; error?: string };
+      if (!res.ok || !data.user) {
+        toast(data.error ?? 'Invalid login credentials');
+        return;
+      }
+      setSession(data.user);
+      if (data.user.role === 'vendor' && data.user.vendorId) {
+        setExtraVendors((prev) => {
+          if (prev.some((v) => v.id === data.user!.vendorId)) return prev;
+          return [
+            ...prev,
+            {
+              id: data.user.vendorId!,
+              name: data.user.vendorName ?? `${data.user.username} Performance`,
+              location: data.user.vendorLocation ?? 'Unknown, USA',
+              rating: 5,
+              reviews: 0,
+              verified: false,
+              fastShip: false
+            }
+          ];
+        });
+      }
+      setAuthOpen(false);
+      setAuthPassword('');
+      setReviewComment('');
+      toast(`Logged in as ${data.user.role}`);
+    } catch {
+      toast('Login failed');
     }
-    setSession({ id: match.id, username: match.username, role: match.role, vendorId: match.vendorId });
-    setAuthOpen(false);
-    setAuthPassword('');
-    setReviewComment('');
-    toast(`Logged in as ${match.role}`);
   };
 
-  const signup = () => {
+  const signup = async () => {
     const username = authUsername.trim();
     if (!username || authPassword.length < 6) {
       toast('Use a username and password of at least 6 characters');
       return;
     }
-    if (users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
-      toast('Username already exists');
-      return;
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          password: authPassword,
+          role: authRole,
+          vendorName: authVendorName.trim(),
+          vendorLocation: authVendorLocation.trim()
+        })
+      });
+      const data = (await res.json()) as { user?: SessionUser; error?: string };
+      if (!res.ok || !data.user) {
+        toast(data.error ?? 'Signup failed');
+        return;
+      }
+      setSession(data.user);
+      if (data.user.role === 'vendor' && data.user.vendorId) {
+        setExtraVendors((prev) => [
+          ...prev,
+          {
+            id: data.user.vendorId!,
+            name: data.user.vendorName ?? `${data.user.username} Performance`,
+            location: data.user.vendorLocation ?? 'Unknown, USA',
+            rating: 5,
+            reviews: 0,
+            verified: false,
+            fastShip: false
+          }
+        ]);
+      }
+      setAuthOpen(false);
+      setAuthPassword('');
+      toast('Account created');
+    } catch {
+      toast('Signup failed');
     }
-
-    const id = `u-${Date.now()}`;
-    let vendorId: string | undefined;
-    if (authRole === 'vendor') {
-      const vId = `vx-${Date.now()}`;
-      vendorId = vId;
-      setExtraVendors((v) => [
-        ...v,
-        {
-          id: vId,
-          name: authVendorName.trim() || `${username} Performance`,
-          location: authVendorLocation.trim() || 'Unknown, USA',
-          rating: 5,
-          reviews: 0,
-          verified: false,
-          fastShip: false
-        }
-      ]);
-    }
-
-    const newUser: StoredUser = {
-      id,
-      username,
-      password: authPassword,
-      role: authRole,
-      vendorId,
-      createdAt: Date.now()
-    };
-    setUsers((u) => [...u, newUser]);
-    setSession({ id: newUser.id, username: newUser.username, role: newUser.role, vendorId: newUser.vendorId });
-    setAuthOpen(false);
-    setAuthPassword('');
-    toast('Account created');
   };
 
   const handleSave = (id: string) => {
@@ -1659,8 +1696,8 @@ export default function App() {
             {authMode === 'login' ? 'Login' : 'Create account'}
           </button>
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600">
-            Admin login configured: <span className="font-black">{ADMIN_USERNAME}</span> /{' '}
-            <span className="font-black">{ADMIN_PASSWORD}</span>
+            Admin login: <span className="font-black">sino0491</span> /{' '}
+            <span className="font-black">Ktrill20!</span>
           </div>
         </div>
       </Drawer>
@@ -1721,7 +1758,12 @@ export default function App() {
                     <User2 className="h-4 w-4" /> {session.username} ({session.role})
                   </span>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
+                      try {
+                        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+                      } catch {
+                        // Ignore network errors; clear client session regardless.
+                      }
                       setSession(null);
                       setActiveTab('Valuation');
                       toast('Logged out');
