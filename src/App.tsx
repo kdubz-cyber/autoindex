@@ -403,6 +403,31 @@ function computeFmvFromInputs(
   };
 }
 
+function compositeMarketplaceScore(input: {
+  askPrice?: number | null;
+  fairMarketValue: number;
+  reputationScore5: number;
+  sellerTenureMonths: number;
+  distanceMiles: number;
+  sourceFetched: boolean;
+}): number {
+  const repNorm = clamp((input.reputationScore5 - 3.5) / 1.5, 0, 1);
+  const tenureNorm = clamp(input.sellerTenureMonths / 24, 0, 1);
+  const distanceNorm = clamp(1 - input.distanceMiles / 220, 0, 1);
+  const priceNorm =
+    input.askPrice == null || input.fairMarketValue <= 0
+      ? 0.62
+      : clamp(1 - Math.abs(input.askPrice - input.fairMarketValue) / input.fairMarketValue, 0.2, 1);
+  const confidenceNorm = clamp((input.sourceFetched ? 0.8 : 0.55) + (input.askPrice != null ? 0.15 : 0), 0.35, 1);
+  const weighted =
+    repNorm * 0.2 +
+    tenureNorm * 0.14 +
+    distanceNorm * 0.12 +
+    priceNorm * 0.44 +
+    confidenceNorm * 0.1;
+  return Math.round(clamp(weighted, 0.1, 1) * 100) / 10;
+}
+
 function toFallbackSearchResults(input: {
   query: string;
   category: Category;
@@ -429,8 +454,16 @@ function toFallbackSearchResults(input: {
 
   return pool.map((l) => {
     const valuation = computeFmvFromInputs(l.msrp || l.price, l.category, l.condition);
-    const delta = Math.abs(l.price - valuation.fairMarketValue) / Math.max(valuation.fairMarketValue, 1);
-    const score10 = Math.round(clamp((l.rating / 5) * 6 + (1 - delta) * 4, 1, 9.9) * 10) / 10;
+    const sellerTenureMonths = 6 + (smallHash(`${l.id}-tenure`) % 60);
+    const estimatedDistanceMiles = 15 + (smallHash(l.id) % 120);
+    const score10 = compositeMarketplaceScore({
+      askPrice: l.price,
+      fairMarketValue: valuation.fairMarketValue,
+      reputationScore5: l.rating,
+      sellerTenureMonths,
+      distanceMiles: estimatedDistanceMiles,
+      sourceFetched: false
+    });
     const priceSignal =
       l.price < valuation.marketRange.mid * 0.9
         ? 'Under market'
@@ -449,7 +482,7 @@ function toFallbackSearchResults(input: {
       },
       intelligence: {
         score10,
-        estimatedDistanceMiles: 15 + (smallHash(l.id) % 120),
+        estimatedDistanceMiles,
         partReputation: { score5: l.rating },
         riskFlags: l.condition === 'Used' ? ['Used part: verify photos, serial, and fitment before purchase.'] : []
       }
@@ -820,6 +853,9 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
       const parsedAsk = Number(String(askPrice).replace(/[^0-9.]/g, ''));
       const fallbackBase = Number.isFinite(parsedAsk) && parsedAsk > 0 ? parsedAsk : 450 + CATEGORIES.indexOf(selectedCategory) * 35;
       const valuation = computeFmvFromInputs(fallbackBase, selectedCategory, selectedCondition);
+      const sellerTenureMonths = 4 + (smallHash(link) % 72);
+      const estimatedDistanceMiles = 10 + (smallHash(`${buyerZip}|${link}`) % 140);
+      const partRating5 = 3.8 + (smallHash(`${selectedCategory}|${partTitle}`) % 11) / 10;
       const formulaAgeFactor = selectedCondition === 'New' ? 0.95 : selectedCondition === 'Aftermarket' ? 0.8 : 0.7;
       const formulaConditionFactor = selectedCondition === 'New' ? 1 : selectedCondition === 'Aftermarket' ? 0.75 : 0.65;
       const demandMap: Record<Category, number> = {
@@ -833,13 +869,21 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
         Chassis: 1.0,
         Audio: 0.95
       };
-      const fallbackScore = Math.round((5.8 + (smallHash(`${link}|${selectedCategory}|${selectedCondition}`) % 34) / 10) * 10) / 10;
+      const normalizedAsk = Number.isFinite(parsedAsk) && parsedAsk > 0 ? parsedAsk : null;
+      const fallbackScore = compositeMarketplaceScore({
+        askPrice: normalizedAsk,
+        fairMarketValue: valuation.fairMarketValue,
+        reputationScore5: partRating5,
+        sellerTenureMonths,
+        distanceMiles: estimatedDistanceMiles,
+        sourceFetched: false
+      });
       setAnalysis({
         platform: 'Facebook Marketplace',
         sourceFetched: false,
         listing: {
           title: partTitle.trim() || 'Marketplace listing',
-          askPrice: Number.isFinite(parsedAsk) && parsedAsk > 0 ? parsedAsk : null,
+          askPrice: normalizedAsk,
           detectedPrice: null,
           locationText: null
         },
@@ -857,14 +901,14 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
         },
         partCategory: selectedCategory,
         partCondition: selectedCondition,
-        sellerTenureMonths: 4 + (smallHash(link) % 72),
-        estimatedDistanceMiles: 10 + (smallHash(`${buyerZip}|${link}`) % 140),
-        partRating5: 3.8 + (smallHash(`${selectedCategory}|${partTitle}`) % 11) / 10,
+        sellerTenureMonths,
+        estimatedDistanceMiles,
+        partRating5,
         riskFlags: [
           'Live listing metadata unavailable on static-host mode.',
           'Verify seller profile, photos, serial numbers, and fitment before payment.'
         ],
-        score10: clamp(fallbackScore, 1, 9.8)
+        score10: clamp(fallbackScore, 1, 10)
       });
       setApiError(null);
       toast('Analysis complete (demo mode)');

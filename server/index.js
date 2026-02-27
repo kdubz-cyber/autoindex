@@ -155,6 +155,39 @@ function classifyPriceSignal(price, marketRange) {
   return 'At market';
 }
 
+function priceFitNorm(price, marketRangeMid) {
+  if (price == null || !marketRangeMid) return 0.62;
+  const delta = Math.abs(price - marketRangeMid) / marketRangeMid;
+  return clamp(1 - delta, 0.2, 1);
+}
+
+function valuationConfidenceNorm({ sourceFetched, hasPrice, hasTitle, hasBuyerGeo }) {
+  let score = 0.55;
+  if (sourceFetched) score += 0.2;
+  if (hasPrice) score += 0.15;
+  if (hasTitle) score += 0.05;
+  if (hasBuyerGeo) score += 0.05;
+  return clamp(score, 0.35, 1);
+}
+
+function compositeScore10({
+  repScoreNorm,
+  demandNorm,
+  distanceNorm,
+  tenureNorm,
+  priceNorm,
+  confidenceNorm
+}) {
+  const weighted =
+    repScoreNorm * 0.2 +
+    demandNorm * 0.12 +
+    distanceNorm * 0.12 +
+    tenureNorm * 0.14 +
+    priceNorm * 0.32 +
+    confidenceNorm * 0.1;
+  return Math.round(clamp(weighted, 0.1, 1) * 100) / 10;
+}
+
 function scoreMarketListing({
   title,
   category,
@@ -162,7 +195,9 @@ function scoreMarketListing({
   price,
   isMarketplaceSource,
   distanceMiles,
-  sellerTenureMonths
+  sellerTenureMonths,
+  sourceFetched = false,
+  hasBuyerGeo = false
 }) {
   const brandKey = normalizeBrand(title);
   const rep = BRAND_REPUTATION[brandKey] ?? BRAND_REPUTATION.oem;
@@ -183,17 +218,29 @@ function scoreMarketListing({
   const demandNorm = clamp((mdf - 0.85) / 0.35, 0, 1);
   const distanceNorm = clamp(1 - distanceMiles / 220, 0, 1);
   const tenureNorm = clamp(sellerTenureMonths / 24, 0, 1);
-  const priceNorm =
-    price == null ? 0.7 : clamp(1 - Math.abs(price - marketRange.mid) / marketRange.mid, 0.3, 1);
-  const score10 =
-    Math.round(
-      (repScoreNorm * 0.3 + demandNorm * 0.2 + distanceNorm * 0.15 + tenureNorm * 0.2 + priceNorm * 0.15) * 100
-    ) / 10;
+  const priceNorm = priceFitNorm(price, marketRange.mid);
+  const confidenceNorm = valuationConfidenceNorm({
+    sourceFetched,
+    hasPrice: price != null,
+    hasTitle: Boolean(title),
+    hasBuyerGeo
+  });
+  const score10 = compositeScore10({
+    repScoreNorm,
+    demandNorm,
+    distanceNorm,
+    tenureNorm,
+    priceNorm,
+    confidenceNorm
+  });
 
   const riskFlags = [];
   if (sellerTenureMonths < 6) riskFlags.push('Seller presence appears relatively new.');
   if (distanceMiles > 90) riskFlags.push('Long pickup distance increases risk and friction.');
   if (priceSignal === 'Under market') riskFlags.push('Price is below market; verify authenticity and condition.');
+  if (price != null && Math.abs(price - marketRange.mid) / marketRange.mid > 0.35) {
+    riskFlags.push('Ask price deviates significantly from FMV estimate.');
+  }
   if (condition === 'Used') riskFlags.push('Used part: request serials, photos, and fitment proof.');
   if (rep.verifiedSignals < 200) riskFlags.push('Limited verified purchase signal volume for this part family.');
 
@@ -217,6 +264,14 @@ function scoreMarketListing({
         score5: rep.score,
         verifiedPurchaseSignals: rep.verifiedSignals,
         brandKey
+      },
+      scoreInputs: {
+        priceNorm,
+        repScoreNorm,
+        demandNorm,
+        distanceNorm,
+        tenureNorm,
+        confidenceNorm
       },
       score10,
       riskFlags
@@ -244,7 +299,9 @@ function normalizeMarketplaceNode(node, fallbackCategory, fallbackCondition, buy
     price,
     isMarketplaceSource: true,
     distanceMiles: distance,
-    sellerTenureMonths
+    sellerTenureMonths,
+    sourceFetched: true,
+    hasBuyerGeo: Boolean(buyerGeo)
   });
   return {
     id: node?.id || `mp-${smallHash(title)}`,
@@ -573,6 +630,9 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
   if (sellerTenureMonths < 6) riskFlags.push('Seller presence appears relatively new.');
   if (distance > 90) riskFlags.push('Long pickup distance increases risk and friction.');
   if (priceSignal === 'Under market') riskFlags.push('Price is below market; verify authenticity and condition.');
+  if (comparedAsk != null && Math.abs(comparedAsk - marketRange.mid) / marketRange.mid > 0.35) {
+    riskFlags.push('Ask price deviates significantly from FMV estimate.');
+  }
   if (condition === 'Used') riskFlags.push('Used part: request serials, photos, and fitment proof.');
   if (rep.verifiedSignals < 200) riskFlags.push('Limited verified purchase signal volume for this part family.');
 
@@ -580,11 +640,21 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
   const demandNorm = clamp((mdf - 0.85) / 0.35, 0, 1);
   const distanceNorm = clamp(1 - distance / 220, 0, 1);
   const tenureNorm = clamp(sellerTenureMonths / 24, 0, 1);
-  const priceNorm =
-    comparedAsk == null
-      ? 0.7
-      : clamp(1 - Math.abs(comparedAsk - marketRange.mid) / marketRange.mid, 0.3, 1);
-  const score10 = Math.round((repScoreNorm * 0.3 + demandNorm * 0.2 + distanceNorm * 0.15 + tenureNorm * 0.2 + priceNorm * 0.15) * 100) / 10;
+  const priceNorm = priceFitNorm(comparedAsk, marketRange.mid);
+  const confidenceNorm = valuationConfidenceNorm({
+    sourceFetched: meta.sourceFetched,
+    hasPrice: comparedAsk != null,
+    hasTitle: Boolean(resolvedTitle && resolvedTitle !== 'Unknown part'),
+    hasBuyerGeo: Boolean(buyerGeo)
+  });
+  const score10 = compositeScore10({
+    repScoreNorm,
+    demandNorm,
+    distanceNorm,
+    tenureNorm,
+    priceNorm,
+    confidenceNorm
+  });
 
   res.json({
     platform: meta.platform,
@@ -617,6 +687,14 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
         score5: rep.score,
         verifiedPurchaseSignals: rep.verifiedSignals,
         brandKey
+      },
+      scoreInputs: {
+        priceNorm,
+        repScoreNorm,
+        demandNorm,
+        distanceNorm,
+        tenureNorm,
+        confidenceNorm
       },
       score10,
       riskFlags
