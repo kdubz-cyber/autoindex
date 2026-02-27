@@ -20,10 +20,12 @@ import {
   X,
   ShoppingCart,
   ClipboardList,
-  ExternalLink
+  ExternalLink,
+  User2,
+  LogOut
 } from 'lucide-react';
 
-type Tab = 'Valuation' | 'Marketplace' | 'Vendors' | 'Learn';
+type Tab = 'Valuation' | 'Marketplace' | 'Vendors' | 'Learn' | 'Sell' | 'Dashboard';
 
 const CATEGORIES = [
   'Engine',
@@ -71,6 +73,9 @@ type Listing = {
   rating: number;
   reviews: number;
   badge?: 'Top Seller' | 'Verified' | 'OEM';
+  sellerType?: 'vendor' | 'individual';
+  sellerUserId?: string;
+  sellerName?: string;
 };
 
 type Vendor = {
@@ -100,6 +105,48 @@ type SavedValuation = {
     availabilityFactor: number;
     marketDemandFactor: number;
   };
+};
+
+type UserRole = 'individual' | 'vendor' | 'admin';
+
+type StoredUser = {
+  id: string;
+  username: string;
+  password: string;
+  role: UserRole;
+  vendorId?: string;
+  createdAt: number;
+};
+
+type SessionUser = {
+  id: string;
+  username: string;
+  role: UserRole;
+  vendorId?: string;
+};
+
+type OrderRecord = {
+  id: string;
+  ts: number;
+  sellerType: 'vendor' | 'individual';
+  sellerId: string;
+  sellerName: string;
+  amount: number;
+  buyerId: string;
+  buyerRole: UserRole;
+  listingId: string;
+  listingTitle: string;
+};
+
+type VendorFeedback = {
+  id: string;
+  vendorId: string;
+  vendorName: string;
+  reviewerId: string;
+  reviewerName: string;
+  rating: number;
+  comment: string;
+  ts: number;
 };
 
 const AUTO_INDEX_LOGO =
@@ -271,6 +318,9 @@ const MARKET_DEMAND_FACTORS: Array<{ key: DemandKey; label: string; factor: numb
   { key: 'high', label: 'High', factor: 1.1 },
   { key: 'cult_track_proven', label: 'Cult / Track Proven', factor: 1.2 }
 ];
+
+const ADMIN_USERNAME = 'sino0491';
+const ADMIN_PASSWORD = 'Ktrill20!';
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -549,7 +599,9 @@ function ListingCard({ listing, vendor, onSave, onCart, onOpen }: ListingCardPro
               <span className="text-xs font-black text-zinc-800">{listing.rating.toFixed(1)}</span>
               <span className="text-xs font-semibold text-zinc-500">({listing.reviews})</span>
             </div>
-            <div className="mt-1 text-[11px] text-zinc-500">{vendor?.name}</div>
+            <div className="mt-1 text-[11px] text-zinc-500">
+              {listing.sellerType === 'individual' ? `Individual: ${listing.sellerName ?? 'Seller'}` : vendor?.name}
+            </div>
           </div>
         </div>
 
@@ -914,9 +966,31 @@ export default function App() {
   const [saved, setSaved] = useLocalStorageState<string[]>('autoindex_saved_items', []);
   const [cart, setCart] = useLocalStorageState<string[]>('autoindex_cart_items', []);
   const [valuations, setValuations] = useLocalStorageState<SavedValuation[]>('autoindex_valuations', []);
+  const [users, setUsers] = useLocalStorageState<StoredUser[]>('autoindex_users', []);
+  const [session, setSession] = useLocalStorageState<SessionUser | null>('autoindex_session', null);
+  const [extraVendors, setExtraVendors] = useLocalStorageState<Vendor[]>('autoindex_extra_vendors', []);
+  const [userListings, setUserListings] = useLocalStorageState<Listing[]>('autoindex_user_listings', []);
+  const [orders, setOrders] = useLocalStorageState<OrderRecord[]>('autoindex_orders', []);
+  const [vendorFeedback, setVendorFeedback] = useLocalStorageState<VendorFeedback[]>('autoindex_vendor_feedback', []);
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toast = (msg: string) => setToastMsg(msg);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authUsername, setAuthUsername] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authRole, setAuthRole] = useState<Exclude<UserRole, 'admin'>>('individual');
+  const [authVendorName, setAuthVendorName] = useState('');
+  const [authVendorLocation, setAuthVendorLocation] = useState('');
+
+  const [sellTitle, setSellTitle] = useState('');
+  const [sellCategory, setSellCategory] = useState<Category>('Engine');
+  const [sellCondition, setSellCondition] = useState<Condition>('Used');
+  const [sellBrand, setSellBrand] = useState('');
+  const [sellFitment, setSellFitment] = useState('');
+  const [sellPrice, setSellPrice] = useState('');
+  const [reviewRating, setReviewRating] = useState('5');
+  const [reviewComment, setReviewComment] = useState('');
 
   const [cartOpen, setCartOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
@@ -925,12 +999,45 @@ export default function App() {
   const [vendorApplyOpen, setVendorApplyOpen] = useState(false);
 
   const listingsRef = useRef<HTMLDivElement | null>(null);
+  const combinedVendors = useMemo(() => [...VENDORS, ...extraVendors], [extraVendors]);
+  const allListings = useMemo(
+    () => [...MOCK_LISTINGS.map((l) => ({ ...l, sellerType: 'vendor' as const })), ...userListings],
+    [userListings]
+  );
+
+  useEffect(() => {
+    setUsers((prev) => {
+      if (prev.some((u) => u.username === ADMIN_USERNAME)) return prev;
+      return [
+        ...prev,
+        {
+          id: `admin-${Date.now()}`,
+          username: ADMIN_USERNAME,
+          password: ADMIN_PASSWORD,
+          role: 'admin',
+          createdAt: Date.now()
+        }
+      ];
+    });
+  }, [setUsers]);
+
+  useEffect(() => {
+    if (session?.role === 'vendor' && !session.vendorId) {
+      setActiveTab('Dashboard');
+    }
+    if (session?.role !== 'individual' && activeTab === 'Sell') {
+      setActiveTab('Valuation');
+    }
+    if (!session && (activeTab === 'Sell' || activeTab === 'Dashboard')) {
+      setActiveTab('Valuation');
+    }
+  }, [activeTab, session]);
 
   const filtered = useMemo(() => {
-    let list = [...MOCK_LISTINGS];
+    let list = [...allListings];
 
     if (category !== 'All') list = list.filter((l) => l.category === category);
-    if (vendorId !== 'All') list = list.filter((l) => l.vendorId === vendorId);
+    if (vendorId !== 'All') list = list.filter((l) => l.vendorId === vendorId && l.sellerType !== 'individual');
     if (condition !== 'All') list = list.filter((l) => l.condition === condition);
     if (oemOnly) list = list.filter((l) => l.brand === 'OEM' || l.badge === 'OEM');
     if (returnsOnly) list = list.filter((l) => l.returns);
@@ -950,7 +1057,7 @@ export default function App() {
     if (sort === 'Top Rated') list.sort((a, b) => b.rating - a.rating);
 
     return list;
-  }, [category, vendorId, condition, oemOnly, returnsOnly, query, sort]);
+  }, [allListings, category, vendorId, condition, oemOnly, returnsOnly, query, sort]);
 
   const fpvCalc = useMemo(() => {
     const parsedBase = Number(baseAnchor.replace(/[^0-9.]/g, ''));
@@ -979,12 +1086,91 @@ export default function App() {
     };
   }, [ageBand, availabilityLevel, baseAnchor, conditionGrade, demandLevel, partType]);
 
+  const login = () => {
+    const username = authUsername.trim();
+    if (!username || !authPassword) {
+      toast('Enter username and password');
+      return;
+    }
+    const match = users.find((u) => u.username.toLowerCase() === username.toLowerCase() && u.password === authPassword);
+    if (!match) {
+      toast('Invalid login credentials');
+      return;
+    }
+    setSession({ id: match.id, username: match.username, role: match.role, vendorId: match.vendorId });
+    setAuthOpen(false);
+    setAuthPassword('');
+    setReviewComment('');
+    toast(`Logged in as ${match.role}`);
+  };
+
+  const signup = () => {
+    const username = authUsername.trim();
+    if (!username || authPassword.length < 6) {
+      toast('Use a username and password of at least 6 characters');
+      return;
+    }
+    if (users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
+      toast('Username already exists');
+      return;
+    }
+
+    const id = `u-${Date.now()}`;
+    let vendorId: string | undefined;
+    if (authRole === 'vendor') {
+      const vId = `vx-${Date.now()}`;
+      vendorId = vId;
+      setExtraVendors((v) => [
+        ...v,
+        {
+          id: vId,
+          name: authVendorName.trim() || `${username} Performance`,
+          location: authVendorLocation.trim() || 'Unknown, USA',
+          rating: 5,
+          reviews: 0,
+          verified: false,
+          fastShip: false
+        }
+      ]);
+    }
+
+    const newUser: StoredUser = {
+      id,
+      username,
+      password: authPassword,
+      role: authRole,
+      vendorId,
+      createdAt: Date.now()
+    };
+    setUsers((u) => [...u, newUser]);
+    setSession({ id: newUser.id, username: newUser.username, role: newUser.role, vendorId: newUser.vendorId });
+    setAuthOpen(false);
+    setAuthPassword('');
+    toast('Account created');
+  };
+
   const handleSave = (id: string) => {
+    if (!session) {
+      setAuthMode('login');
+      setAuthOpen(true);
+      toast('Login required');
+      return;
+    }
     setSaved((s) => (s.includes(id) ? s : [...s, id]));
     toast('Saved item');
   };
 
   const handleCart = (id: string) => {
+    if (!session) {
+      setAuthMode('login');
+      setAuthOpen(true);
+      toast('Login required');
+      return;
+    }
+    if (session.role !== 'individual') {
+      toast('Only Individual Users can place orders');
+      return;
+    }
     setCart((c) => (c.includes(id) ? c : [...c, id]));
     toast('Added to cart');
   };
@@ -1024,22 +1210,84 @@ export default function App() {
     toast('F.P.V valuation saved');
   };
 
+  const createIndividualListing = () => {
+    if (!session || session.role !== 'individual') {
+      toast('Only Individual Users can list parts for sale');
+      return;
+    }
+    const price = Number(sellPrice.replace(/[^0-9.]/g, ''));
+    if (!sellTitle.trim() || !sellBrand.trim() || !sellFitment.trim() || !price || price <= 0) {
+      toast('Complete all sell form fields');
+      return;
+    }
+    const listing: Listing = {
+      id: `ul-${Date.now()}`,
+      title: sellTitle.trim(),
+      category: sellCategory,
+      condition: sellCondition,
+      brand: sellBrand.trim(),
+      fitment: sellFitment.trim(),
+      price,
+      vendorId: `user-${session.id}`,
+      ships: 'Paid',
+      returns: false,
+      rating: 5,
+      reviews: 0,
+      sellerType: 'individual',
+      sellerUserId: session.id,
+      sellerName: session.username
+    };
+    setUserListings((l) => [listing, ...l]);
+    setSellTitle('');
+    setSellBrand('');
+    setSellFitment('');
+    setSellPrice('');
+    toast('Listing published');
+  };
+
   const currentDetail = useMemo(() => {
-    const listing = detailId ? MOCK_LISTINGS.find((x) => x.id === detailId) : null;
+    const listing = detailId ? allListings.find((x) => x.id === detailId) : null;
     if (!listing) return null;
-    return { listing, vendor: VENDORS.find((v) => v.id === listing.vendorId) };
-  }, [detailId]);
+    return { listing, vendor: combinedVendors.find((v) => v.id === listing.vendorId) };
+  }, [allListings, combinedVendors, detailId]);
 
   const cartItems = useMemo(
-    () => cart.map((id) => MOCK_LISTINGS.find((l) => l.id === id)).filter(Boolean) as Listing[],
-    [cart]
+    () => cart.map((id) => allListings.find((l) => l.id === id)).filter(Boolean) as Listing[],
+    [allListings, cart]
   );
   const savedItems = useMemo(
-    () => saved.map((id) => MOCK_LISTINGS.find((l) => l.id === id)).filter(Boolean) as Listing[],
-    [saved]
+    () => saved.map((id) => allListings.find((l) => l.id === id)).filter(Boolean) as Listing[],
+    [allListings, saved]
   );
 
   const cartTotal = useMemo(() => cartItems.reduce((sum, l) => sum + l.price, 0), [cartItems]);
+  const vendorRevenue = useMemo(() => {
+    if (!session || session.role !== 'vendor' || !session.vendorId) return { daily: 0, weekly: 0, monthly: 0 };
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const scoped = orders.filter((o) => o.sellerType === 'vendor' && o.sellerId === session.vendorId);
+    const sum = (maxAgeDays: number) =>
+      scoped.filter((o) => now - o.ts <= maxAgeDays * dayMs).reduce((total, o) => total + o.amount, 0);
+    return { daily: sum(1), weekly: sum(7), monthly: sum(30) };
+  }, [orders, session]);
+  const adminRevenue = useMemo(() => {
+    if (!session || session.role !== 'admin') return null;
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const within = (days: number) => orders.filter((o) => now - o.ts <= days * dayMs);
+    const summarize = (days: number) => {
+      const bucket = within(days);
+      const total = bucket.reduce((sum, o) => sum + o.amount, 0);
+      const vendor = bucket.filter((o) => o.sellerType === 'vendor').reduce((sum, o) => sum + o.amount, 0);
+      const individual = bucket.filter((o) => o.sellerType === 'individual').reduce((sum, o) => sum + o.amount, 0);
+      return { total, vendor, individual };
+    };
+    return { daily: summarize(1), weekly: summarize(7), monthly: summarize(30) };
+  }, [orders, session]);
+  const vendorReviews = useMemo(() => {
+    if (!session || session.role !== 'vendor' || !session.vendorId) return [];
+    return vendorFeedback.filter((r) => r.vendorId === session.vendorId).sort((a, b) => b.ts - a.ts);
+  }, [session, vendorFeedback]);
 
   useEffect(() => {
     setCartOpen(false);
@@ -1047,6 +1295,10 @@ export default function App() {
     setDetailOpen(false);
     setVendorApplyOpen(false);
   }, [activeTab]);
+
+  const navTabs: Tab[] = ['Valuation', 'Marketplace', 'Vendors', 'Learn'];
+  if (session?.role === 'individual') navTabs.push('Sell');
+  if (session?.role === 'vendor' || session?.role === 'admin') navTabs.push('Dashboard');
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
@@ -1087,7 +1339,27 @@ export default function App() {
               </div>
               <button
                 onClick={() => {
-                  toast('Checkout simulated (MVP)');
+                  if (!session || session.role !== 'individual') {
+                    toast('Only Individual Users can checkout');
+                    return;
+                  }
+                  const created = cartItems.map<OrderRecord>((item) => ({
+                    id: `o-${Date.now()}-${item.id}-${Math.floor(Math.random() * 1e5)}`,
+                    ts: Date.now(),
+                    sellerType: item.sellerType === 'individual' ? 'individual' : 'vendor',
+                    sellerId: item.sellerType === 'individual' ? item.sellerUserId ?? 'unknown-user' : item.vendorId,
+                    sellerName:
+                      item.sellerType === 'individual'
+                        ? item.sellerName ?? 'Individual Seller'
+                        : combinedVendors.find((v) => v.id === item.vendorId)?.name ?? 'Vendor',
+                    amount: item.price,
+                    buyerId: session.id,
+                    buyerRole: session.role,
+                    listingId: item.id,
+                    listingTitle: item.title
+                  }));
+                  setOrders((prev) => [...created, ...prev]);
+                  toast('Checkout completed (simulated)');
                   setCart([]);
                 }}
                 className="mt-3 w-full rounded-2xl bg-zinc-900 py-2.5 text-sm font-extrabold text-white hover:bg-zinc-800"
@@ -1165,11 +1437,21 @@ export default function App() {
             </div>
 
             <div className="rounded-2xl border border-zinc-200 bg-white p-3">
-              <div className="text-xs font-bold text-zinc-500">Vendor</div>
+              <div className="text-xs font-bold text-zinc-500">
+                {currentDetail.listing.sellerType === 'individual' ? 'Individual seller' : 'Vendor'}
+              </div>
               <div className="mt-1 flex items-start justify-between">
                 <div>
-                  <div className="text-sm font-black">{currentDetail.vendor?.name}</div>
-                  <div className="text-xs text-zinc-600">{currentDetail.vendor?.location}</div>
+                  <div className="text-sm font-black">
+                    {currentDetail.listing.sellerType === 'individual'
+                      ? currentDetail.listing.sellerName ?? 'Individual Seller'
+                      : currentDetail.vendor?.name}
+                  </div>
+                  <div className="text-xs text-zinc-600">
+                    {currentDetail.listing.sellerType === 'individual'
+                      ? 'Peer-to-peer listing'
+                      : currentDetail.vendor?.location}
+                  </div>
                 </div>
                 {currentDetail.vendor?.verified ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] font-bold text-zinc-800">
@@ -1178,6 +1460,61 @@ export default function App() {
                 ) : null}
               </div>
             </div>
+
+            {session?.role === 'individual' &&
+            currentDetail.listing.sellerType !== 'individual' &&
+            currentDetail.vendor ? (
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                <div className="text-xs font-bold text-zinc-600">Leave vendor feedback</div>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <select
+                    value={reviewRating}
+                    onChange={(e) => setReviewRating(e.target.value)}
+                    className="rounded-xl border border-zinc-200 bg-white px-2 py-1.5 text-sm outline-none"
+                  >
+                    <option value="5">5 Stars</option>
+                    <option value="4">4 Stars</option>
+                    <option value="3">3 Stars</option>
+                    <option value="2">2 Stars</option>
+                    <option value="1">1 Star</option>
+                  </select>
+                  <button
+                    onClick={() => {
+                      if (!reviewComment.trim()) {
+                        toast('Add a review comment');
+                        return;
+                      }
+                      setVendorFeedback((f) => [
+                        {
+                          id: `r-${Date.now()}`,
+                          vendorId: currentDetail.vendor!.id,
+                          vendorName: currentDetail.vendor!.name,
+                          reviewerId: session.id,
+                          reviewerName: session.username,
+                          rating: Number(reviewRating),
+                          comment: reviewComment.trim(),
+                          ts: Date.now()
+                        },
+                        ...f
+                      ]);
+                      setReviewComment('');
+                      setReviewRating('5');
+                      toast('Review submitted');
+                    }}
+                    className="rounded-xl bg-zinc-900 px-2 py-1.5 text-sm font-extrabold text-white hover:bg-zinc-800"
+                  >
+                    Submit review
+                  </button>
+                </div>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                  rows={3}
+                  placeholder="Tell this vendor how your buying experience went"
+                />
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -1239,6 +1576,95 @@ export default function App() {
         </div>
       </Drawer>
 
+      <Drawer open={authOpen} title={authMode === 'login' ? 'Login' : 'Create account'} onClose={() => setAuthOpen(false)}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setAuthMode('login')}
+              className={`rounded-xl py-2 text-xs font-extrabold ${
+                authMode === 'login' ? 'bg-zinc-900 text-white' : 'border border-zinc-200 bg-white'
+              }`}
+            >
+              Login
+            </button>
+            <button
+              onClick={() => setAuthMode('signup')}
+              className={`rounded-xl py-2 text-xs font-extrabold ${
+                authMode === 'signup' ? 'bg-zinc-900 text-white' : 'border border-zinc-200 bg-white'
+              }`}
+            >
+              Sign up
+            </button>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-zinc-600">Username</div>
+            <input
+              value={authUsername}
+              onChange={(e) => setAuthUsername(e.target.value)}
+              className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+              placeholder="username"
+            />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-zinc-600">Password</div>
+            <input
+              type="password"
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+              placeholder="password"
+            />
+          </div>
+          {authMode === 'signup' ? (
+            <>
+              <div>
+                <div className="text-xs font-bold text-zinc-600">Account type</div>
+                <select
+                  value={authRole}
+                  onChange={(e) => setAuthRole(e.target.value as Exclude<UserRole, 'admin'>)}
+                  className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                >
+                  <option value="individual">Individual User</option>
+                  <option value="vendor">Vendor</option>
+                </select>
+              </div>
+              {authRole === 'vendor' ? (
+                <>
+                  <div>
+                    <div className="text-xs font-bold text-zinc-600">Vendor name</div>
+                    <input
+                      value={authVendorName}
+                      onChange={(e) => setAuthVendorName(e.target.value)}
+                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      placeholder="Shop name"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-zinc-600">Vendor location</div>
+                    <input
+                      value={authVendorLocation}
+                      onChange={(e) => setAuthVendorLocation(e.target.value)}
+                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      placeholder="City, State"
+                    />
+                  </div>
+                </>
+              ) : null}
+            </>
+          ) : null}
+          <button
+            onClick={authMode === 'login' ? login : signup}
+            className="w-full rounded-2xl bg-zinc-900 py-2.5 text-sm font-extrabold text-white hover:bg-zinc-800"
+          >
+            {authMode === 'login' ? 'Login' : 'Create account'}
+          </button>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600">
+            Admin login configured: <span className="font-black">{ADMIN_USERNAME}</span> /{' '}
+            <span className="font-black">{ADMIN_PASSWORD}</span>
+          </div>
+        </div>
+      </Drawer>
+
       <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4">
           <div className="flex items-center justify-between gap-4 py-3">
@@ -1288,6 +1714,34 @@ export default function App() {
                 <ShoppingCart className="h-4 w-4" /> Cart{' '}
                 <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs">{cart.length}</span>
               </button>
+
+              {session ? (
+                <>
+                  <span className="hidden items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs font-extrabold text-zinc-700 md:inline-flex">
+                    <User2 className="h-4 w-4" /> {session.username} ({session.role})
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSession(null);
+                      setActiveTab('Valuation');
+                      toast('Logged out');
+                    }}
+                    className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-sm font-extrabold hover:bg-zinc-50"
+                  >
+                    <LogOut className="h-4 w-4" /> Logout
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    setAuthMode('login');
+                    setAuthOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-sm font-extrabold hover:bg-zinc-50"
+                >
+                  <User2 className="h-4 w-4" /> Login / Sign up
+                </button>
+              )}
             </div>
           </div>
 
@@ -1304,7 +1758,7 @@ export default function App() {
           </div>
 
           <nav className="flex flex-wrap items-center gap-2 pb-3">
-            {(['Valuation', 'Marketplace', 'Vendors', 'Learn'] as const).map((t) => (
+            {navTabs.map((t) => (
               <button
                 key={t}
                 onClick={() => {
@@ -1725,7 +2179,7 @@ export default function App() {
                       className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
                     >
                       <option value="All">All vendors</option>
-                      {VENDORS.map((v) => (
+                      {combinedVendors.map((v) => (
                         <option key={v.id} value={v.id}>
                           {v.name}
                         </option>
@@ -1801,7 +2255,7 @@ export default function App() {
                       <ListingCard
                         key={l.id}
                         listing={l}
-                        vendor={VENDORS.find((v) => v.id === l.vendorId)}
+                        vendor={combinedVendors.find((v) => v.id === l.vendorId)}
                         onSave={handleSave}
                         onCart={handleCart}
                         onOpen={openDetail}
@@ -1839,7 +2293,7 @@ export default function App() {
               </div>
 
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {VENDORS.map((v) => (
+                {combinedVendors.map((v) => (
                   <div key={v.id} className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
                     <div className="flex items-start justify-between">
                       <div>
@@ -1982,6 +2436,181 @@ export default function App() {
               </div>
             </div>
           </div>
+        ) : null}
+
+        {activeTab === 'Sell' ? (
+          session?.role === 'individual' ? (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm lg:col-span-2">
+                <div className="text-xs font-bold text-zinc-500">Individual seller tools</div>
+                <div className="mt-1 text-2xl font-black">Create a listing</div>
+                <div className="mt-2 text-sm text-zinc-600">
+                  Individual users can sell directly to other individual users while also buying from vendors.
+                </div>
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <label className="text-xs font-bold text-zinc-600">Listing title</label>
+                    <input
+                      value={sellTitle}
+                      onChange={(e) => setSellTitle(e.target.value)}
+                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      placeholder="e.g., OEM Civic Si rear bumper"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-zinc-600">Category</label>
+                    <select
+                      value={sellCategory}
+                      onChange={(e) => setSellCategory(e.target.value as Category)}
+                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                    >
+                      {CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-zinc-600">Condition</label>
+                    <select
+                      value={sellCondition}
+                      onChange={(e) => setSellCondition(e.target.value as Condition)}
+                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                    >
+                      <option value="New">New</option>
+                      <option value="Used">Used</option>
+                      <option value="Aftermarket">Aftermarket</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-zinc-600">Brand</label>
+                    <input
+                      value={sellBrand}
+                      onChange={(e) => setSellBrand(e.target.value)}
+                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      placeholder="OEM / Brand"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-zinc-600">Asking price</label>
+                    <input
+                      value={sellPrice}
+                      onChange={(e) => setSellPrice(e.target.value)}
+                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      placeholder="$500"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-xs font-bold text-zinc-600">Fitment notes</label>
+                    <input
+                      value={sellFitment}
+                      onChange={(e) => setSellFitment(e.target.value)}
+                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      placeholder="2017-2021 Civic Si"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={createIndividualListing}
+                  className="mt-4 rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                >
+                  Publish listing
+                </button>
+              </div>
+              <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
+                <div className="text-xs font-bold text-zinc-500">My seller summary</div>
+                <div className="mt-1 text-2xl font-black">Listings & sales</div>
+                <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="text-xs font-bold text-zinc-500">Active individual listings</div>
+                  <div className="text-lg font-black">
+                    {userListings.filter((l) => l.sellerUserId === session.id).length}
+                  </div>
+                </div>
+                <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="text-xs font-bold text-zinc-500">Completed individual sales</div>
+                  <div className="text-lg font-black">
+                    {fmtMoney(
+                      orders
+                        .filter((o) => o.sellerType === 'individual' && o.sellerId === session.id)
+                        .reduce((sum, o) => sum + o.amount, 0)
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('Valuation')}
+                  className="mt-4 w-full rounded-2xl border border-zinc-200 bg-white py-2 text-sm font-extrabold hover:bg-zinc-50"
+                >
+                  Browse marketplace
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-700">
+              Sell tools are available for logged-in Individual Users only.
+            </div>
+          )
+        ) : null}
+
+        {activeTab === 'Dashboard' ? (
+          session?.role === 'vendor' ? (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm lg:col-span-2">
+                <div className="text-xs font-bold text-zinc-500">Vendor dashboard</div>
+                <div className="mt-1 text-2xl font-black">Sales performance</div>
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <Stat icon={TrendingUp} label="Daily sales" value={fmtMoney(vendorRevenue.daily)} />
+                  <Stat icon={TrendingUp} label="Weekly sales" value={fmtMoney(vendorRevenue.weekly)} />
+                  <Stat icon={TrendingUp} label="Monthly sales" value={fmtMoney(vendorRevenue.monthly)} />
+                </div>
+              </div>
+              <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
+                <div className="text-xs font-bold text-zinc-500">Customer feedback</div>
+                <div className="mt-1 text-2xl font-black">Recent reviews</div>
+                <div className="mt-4 space-y-3">
+                  {vendorReviews.length ? (
+                    vendorReviews.slice(0, 4).map((review) => (
+                      <div key={review.id} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                        <div className="text-xs font-bold text-zinc-500">{review.reviewerName}</div>
+                        <div className="text-sm font-black">{review.rating}/5</div>
+                        <div className="mt-1 text-sm text-zinc-700">{review.comment}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-600">
+                      No reviews yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : session?.role === 'admin' && adminRevenue ? (
+            <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
+              <div className="text-xs font-bold text-zinc-500">Website administrator dashboard</div>
+              <div className="mt-1 text-2xl font-black">Master sales overview</div>
+              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                {[
+                  { label: 'Daily', data: adminRevenue.daily },
+                  { label: 'Weekly', data: adminRevenue.weekly },
+                  { label: 'Monthly', data: adminRevenue.monthly }
+                ].map((period) => (
+                  <div key={period.label} className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
+                    <div className="text-xs font-bold text-zinc-500">{period.label} total</div>
+                    <div className="text-xl font-black">{fmtMoney(period.data.total)}</div>
+                    <div className="mt-2 text-xs text-zinc-700">Vendor sales: {fmtMoney(period.data.vendor)}</div>
+                    <div className="text-xs text-zinc-700">Individual sales: {fmtMoney(period.data.individual)}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
+                Total completed orders tracked: <span className="font-black">{orders.length}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-700">
+              Dashboard access requires a Vendor or Administrator account.
+            </div>
+          )
         ) : null}
 
         <footer className="mt-10 pb-8 text-center text-xs text-zinc-500">
