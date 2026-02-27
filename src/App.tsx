@@ -25,6 +25,8 @@ import {
   LogOut
 } from 'lucide-react';
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
 type Tab = 'Valuation' | 'Marketplace' | 'Vendors' | 'Learn' | 'Sell' | 'Dashboard';
 
 const CATEGORIES = [
@@ -691,7 +693,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
     setLoading(true);
     setApiError(null);
     try {
-      const res = await fetch('/api/market-intelligence/analyze', {
+      const res = await fetch(`${API_BASE_URL}/api/market-intelligence/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -703,7 +705,8 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           askPrice: askPrice.trim()
         })
       });
-      const data = await res.json();
+      const raw = await res.text();
+      const data = raw ? JSON.parse(raw) : {};
       if (!res.ok) {
         setApiError(data?.error ?? 'Failed to analyze listing');
         return;
@@ -739,7 +742,9 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
       });
       toast('Marketplace analysis complete');
     } catch {
-      setApiError('Could not reach intelligence service.');
+      setApiError(
+        'Could not reach intelligence service. On GitHub Pages, set VITE_API_BASE_URL to a deployed backend.'
+      );
     } finally {
       setLoading(false);
     }
@@ -749,7 +754,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
     setSearchLoading(true);
     setSearchError(null);
     try {
-      const res = await fetch('/api/market-intelligence/search-facebook', {
+      const res = await fetch(`${API_BASE_URL}/api/market-intelligence/search-facebook`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -765,16 +770,22 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           limit: 12
         })
       });
-      const data = await res.json();
+      const raw = await res.text();
+      const data = raw ? JSON.parse(raw) : {};
       if (!res.ok) {
-        setSearchError(data?.error ?? 'Marketplace search failed');
+        setSearchError(
+          data?.error ??
+            `Marketplace search failed (${res.status}). Ensure backend has META_CL_ACCESS_TOKEN configured.`
+        );
         setSearchResults([]);
         return;
       }
       setSearchResults(Array.isArray(data?.listings) ? data.listings : []);
       toast(`Loaded ${Array.isArray(data?.listings) ? data.listings.length : 0} marketplace results`);
     } catch {
-      setSearchError('Unable to search marketplace right now.');
+      setSearchError(
+        'Unable to search marketplace right now. On GitHub Pages, configure VITE_API_BASE_URL to your backend.'
+      );
       setSearchResults([]);
     } finally {
       setSearchLoading(false);
@@ -1179,7 +1190,7 @@ export default function App() {
   useEffect(() => {
     const hydrateSession = async () => {
       try {
-        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        const res = await fetch(`${API_BASE_URL}/api/auth/me`, { credentials: 'include' });
         if (!res.ok) {
           setSession(null);
           return;
@@ -1282,7 +1293,7 @@ export default function App() {
       return;
     }
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -1327,7 +1338,7 @@ export default function App() {
       return;
     }
     try {
-      const res = await fetch('/api/auth/signup', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -1940,7 +1951,7 @@ export default function App() {
                   <button
                     onClick={async () => {
                       try {
-                        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+                        await fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
                       } catch {
                         // Ignore network errors; clear client session regardless.
                       }
