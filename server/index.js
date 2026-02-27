@@ -18,6 +18,8 @@ const PROD = process.env.NODE_ENV === 'production';
 const TOKEN_TTL = '7d';
 const USERS_PATH = path.join(__dirname, 'data', 'users.json');
 const HTTP_TIMEOUT_MS = 7000;
+const META_CL_BASE_URL = process.env.META_CL_BASE_URL || 'https://graph.facebook.com/v22.0';
+const META_CL_ACCESS_TOKEN = process.env.META_CL_ACCESS_TOKEN || '';
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -124,6 +126,122 @@ function inferAgeBand(title = '') {
   if (t.includes('201') || t.includes('2015')) return 'years_3_7';
   if (t.includes('200')) return 'years_7_15';
   return 'years_3_7';
+}
+
+function safeNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function classifyPriceSignal(price, marketRange) {
+  if (price == null) return 'At market';
+  if (price < marketRange.mid * 0.9) return 'Under market';
+  if (price > marketRange.mid * 1.1) return 'Over market';
+  return 'At market';
+}
+
+function scoreMarketListing({
+  title,
+  category,
+  condition,
+  price,
+  isMarketplaceSource,
+  distanceMiles,
+  sellerTenureMonths
+}) {
+  const brandKey = normalizeBrand(title);
+  const rep = BRAND_REPUTATION[brandKey] ?? BRAND_REPUTATION.oem;
+  const inferredPartType = condition === 'Aftermarket' ? 'Performance' : 'OEM';
+  const af = ageFactor(inferredPartType, inferAgeBand(title));
+  const cf = conditionFactor(condition);
+  const avf = availabilityFactor(isMarketplaceSource);
+  const mdf = demandFactor(category);
+  const baseAnchor = Math.max(price ?? 300, 50);
+  const fmv = Math.round(baseAnchor * af * cf * avf * mdf);
+  const marketRange = {
+    low: Math.round(fmv * 0.88),
+    mid: fmv,
+    high: Math.round(fmv * 1.18)
+  };
+  const priceSignal = classifyPriceSignal(price, marketRange);
+  const repScoreNorm = clamp((rep.score - 3.5) / 1.5, 0, 1);
+  const demandNorm = clamp((mdf - 0.85) / 0.35, 0, 1);
+  const distanceNorm = clamp(1 - distanceMiles / 220, 0, 1);
+  const tenureNorm = clamp(sellerTenureMonths / 24, 0, 1);
+  const priceNorm =
+    price == null ? 0.7 : clamp(1 - Math.abs(price - marketRange.mid) / marketRange.mid, 0.3, 1);
+  const score10 =
+    Math.round(
+      (repScoreNorm * 0.3 + demandNorm * 0.2 + distanceNorm * 0.15 + tenureNorm * 0.2 + priceNorm * 0.15) * 100
+    ) / 10;
+
+  const riskFlags = [];
+  if (sellerTenureMonths < 6) riskFlags.push('Seller presence appears relatively new.');
+  if (distanceMiles > 90) riskFlags.push('Long pickup distance increases risk and friction.');
+  if (priceSignal === 'Under market') riskFlags.push('Price is below market; verify authenticity and condition.');
+  if (condition === 'Used') riskFlags.push('Used part: request serials, photos, and fitment proof.');
+  if (rep.verifiedSignals < 200) riskFlags.push('Limited verified purchase signal volume for this part family.');
+
+  return {
+    valuation: {
+      formula: {
+        baseAnchor,
+        ageFactor: af,
+        conditionFactor: cf,
+        availabilityFactor: avf,
+        marketDemandFactor: mdf
+      },
+      marketRange,
+      fairMarketValue: marketRange.mid,
+      priceSignal
+    },
+    intelligence: {
+      sellerTenureMonths,
+      estimatedDistanceMiles: distanceMiles,
+      partReputation: {
+        score5: rep.score,
+        verifiedPurchaseSignals: rep.verifiedSignals,
+        brandKey
+      },
+      score10,
+      riskFlags
+    }
+  };
+}
+
+function normalizeMarketplaceNode(node, fallbackCategory, fallbackCondition, buyerGeo) {
+  const listingDetails = node?.listing_details || node?.listingDetails || {};
+  const title = listingDetails?.title || node?.title || 'Unknown listing';
+  const description = listingDetails?.description || node?.description || '';
+  const price = safeNumber(listingDetails?.price?.amount) ?? parsePrice(listingDetails?.price) ?? parsePrice(node?.price) ?? parsePrice(`${title} ${description}`);
+  const lat = safeNumber(node?.location?.latitude) ?? safeNumber(node?.latitude);
+  const lon = safeNumber(node?.location?.longitude) ?? safeNumber(node?.longitude);
+  const seededSeller = {
+    lat: lat ?? (40 + (smallHash(`${node?.id || title}-lat`) % 900) / 100),
+    lon: lon ?? (-124 + (smallHash(`${node?.id || title}-lon`) % 580) / 10)
+  };
+  const distance = haversineMiles(buyerGeo, seededSeller) ?? (20 + (smallHash(`${node?.id || title}-dist`) % 180));
+  const sellerTenureMonths = 3 + (smallHash(`${node?.id || title}-tenure`) % 84);
+  const scored = scoreMarketListing({
+    title,
+    category: fallbackCategory,
+    condition: fallbackCondition,
+    price,
+    isMarketplaceSource: true,
+    distanceMiles: distance,
+    sellerTenureMonths
+  });
+  return {
+    id: node?.id || `mp-${smallHash(title)}`,
+    title,
+    description,
+    url: node?.url || node?.permalink_url || null,
+    price,
+    locationText: node?.location?.name || node?.location_text || null,
+    createdTime: node?.creation_time || node?.created_time || null,
+    viewsBucket: node?.views_bucket || null,
+    ...scored
+  };
 }
 
 async function fetchListingMetadata(url) {
@@ -479,6 +597,110 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
       riskFlags
     }
   });
+});
+
+app.post('/api/market-intelligence/search-facebook', async (req, res) => {
+  const {
+    q,
+    categories,
+    listingCountries,
+    priceMin,
+    priceMax,
+    since,
+    until,
+    sort,
+    partCategory,
+    partCondition,
+    buyerZip,
+    limit
+  } = req.body ?? {};
+
+  if (!META_CL_ACCESS_TOKEN) {
+    res.status(503).json({
+      error:
+        'Meta Content Library API is not configured. Set META_CL_ACCESS_TOKEN on the server environment.'
+    });
+    return;
+  }
+
+  const query = String(q || '').trim();
+  if (!query) {
+    res.status(400).json({ error: 'Search query (q) is required.' });
+    return;
+  }
+
+  const normalizedCategory = typeof partCategory === 'string' ? partCategory : 'Engine';
+  const normalizedCondition =
+    partCondition === 'New' || partCondition === 'Aftermarket' ? partCondition : 'Used';
+
+  const params = new URLSearchParams();
+  params.set('q', query);
+  params.set(
+    'fields',
+    'id,url,creation_time,views_bucket,location,listing_details{title,description,price}'
+  );
+  params.set('access_token', META_CL_ACCESS_TOKEN);
+
+  if (Array.isArray(categories) && categories.length) params.set('categories', categories.join(','));
+  if (Array.isArray(listingCountries) && listingCountries.length) {
+    params.set('listing_countries', listingCountries.join(','));
+  } else {
+    params.set('listing_countries', 'US');
+  }
+  if (priceMin != null && String(priceMin).length) params.set('price_min', String(priceMin));
+  if (priceMax != null && String(priceMax).length) params.set('price_max', String(priceMax));
+  if (since) params.set('since', String(since));
+  if (until) params.set('until', String(until));
+  if (sort) params.set('sort', String(sort));
+  params.set('limit', String(clamp(Number(limit) || 12, 1, 50)));
+
+  const endpoint = `${META_CL_BASE_URL}/facebook/marketplace-listings/preview?${params.toString()}`;
+
+  try {
+    const response = await fetchWithTimeout(endpoint, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'AutoIndexBot/1.0 (+https://autoindex.local)'
+      }
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      res.status(response.status).json({
+        error: payload?.error?.message || 'Failed to query Meta Content Library API.',
+        details: payload?.error || null
+      });
+      return;
+    }
+
+    const nodes = Array.isArray(payload?.data) ? payload.data : [];
+    const buyerGeo = await geocodeUSZip(buyerZip);
+    const listings = nodes.map((node) =>
+      normalizeMarketplaceNode(node, normalizedCategory, normalizedCondition, buyerGeo)
+    );
+
+    res.json({
+      source: 'Meta Content Library API',
+      query: {
+        q: query,
+        categories: categories || [],
+        listingCountries: listingCountries || ['US'],
+        priceMin: priceMin ?? null,
+        priceMax: priceMax ?? null,
+        since: since ?? null,
+        until: until ?? null,
+        sort: sort ?? 'most_to_least_views'
+      },
+      count: listings.length,
+      listings,
+      paging: payload?.paging || null
+    });
+  } catch (error) {
+    res.status(502).json({
+      error: 'Unable to query Facebook Marketplace data at this time.',
+      details: String(error?.message || error)
+    });
+  }
 });
 
 app.listen(PORT, async () => {

@@ -28,6 +28,11 @@ Default admin credentials:
 
 Set `SESSION_SECRET` in production.
 
+For Facebook Marketplace intelligence search, also set:
+
+- `META_CL_ACCESS_TOKEN` (Meta Content Library API token)
+- `META_CL_BASE_URL` (optional override, default `https://graph.facebook.com/v22.0`)
+
 ## Run locally
 
 Requires Node.js 20+.
@@ -42,6 +47,12 @@ npm install
 
 ```bash
 npm run server
+```
+
+Example:
+
+```bash
+SESSION_SECRET=replace-me META_CL_ACCESS_TOKEN=replace-me npm run server
 ```
 
 3. In a second terminal, start frontend:

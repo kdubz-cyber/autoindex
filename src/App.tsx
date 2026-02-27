@@ -638,6 +638,21 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
   const [askPrice, setAskPrice] = useState('');
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchPriceMin, setSearchPriceMin] = useState('');
+  const [searchPriceMax, setSearchPriceMax] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<
+    Array<{
+      id: string;
+      title: string;
+      url?: string | null;
+      price?: number | null;
+      valuation: { fairMarketValue: number; marketRange: { low: number; mid: number; high: number }; priceSignal: string };
+      intelligence: { score10: number; estimatedDistanceMiles: number; partReputation: { score5: number }; riskFlags: string[] };
+    }>
+  >([]);
 
   const [analysis, setAnalysis] = useState<null | {
     platform: 'Facebook Marketplace' | 'Unknown' | string;
@@ -670,6 +685,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
   }>(null);
 
   const canAnalyse = link.trim().length > 10;
+  const canSearch = searchQuery.trim().length > 1;
 
   const run = async () => {
     setLoading(true);
@@ -696,7 +712,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
         platform: data.platform,
         sourceFetched: Boolean(data.sourceFetched),
         listing: {
-          title: data.listing?.title ?? partTitle.trim() || 'Unknown part',
+          title: data.listing?.title ?? (partTitle.trim() || 'Unknown part'),
           askPrice: data.listing?.askPrice ?? null,
           detectedPrice: data.listing?.detectedPrice ?? null,
           locationText: data.listing?.locationText ?? null
@@ -726,6 +742,42 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
       setApiError('Could not reach intelligence service.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runFacebookSearch = async () => {
+    setSearchLoading(true);
+    setSearchError(null);
+    try {
+      const res = await fetch('/api/market-intelligence/search-facebook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          q: searchQuery.trim(),
+          categories: [selectedCategory],
+          listingCountries: ['US'],
+          priceMin: searchPriceMin.trim() || undefined,
+          priceMax: searchPriceMax.trim() || undefined,
+          sort: 'newest_to_oldest',
+          partCategory: selectedCategory,
+          partCondition: selectedCondition,
+          buyerZip: buyerZip.trim(),
+          limit: 12
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSearchError(data?.error ?? 'Marketplace search failed');
+        setSearchResults([]);
+        return;
+      }
+      setSearchResults(Array.isArray(data?.listings) ? data.listings : []);
+      toast(`Loaded ${Array.isArray(data?.listings) ? data.listings.length : 0} marketplace results`);
+    } catch {
+      setSearchError('Unable to search marketplace right now.');
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -936,6 +988,105 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
               </div>
             </div>
           ) : null}
+
+          <div className="mt-6 rounded-3xl border border-zinc-200 bg-white p-4">
+            <div className="text-xs font-bold text-zinc-500">Facebook Marketplace Search</div>
+            <div className="mt-1 text-lg font-black text-zinc-900">Search listings and rate FMV at scale</div>
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="md:col-span-2">
+                <label className="text-xs font-bold text-zinc-600">Search keywords</label>
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                  placeholder="e.g., brembo brakes civic si"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-zinc-600">Condition profile</label>
+                <div className="mt-1 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-semibold text-zinc-700">
+                  {selectedCondition}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-zinc-600">Min price (USD)</label>
+                <input
+                  value={searchPriceMin}
+                  onChange={(e) => setSearchPriceMin(e.target.value)}
+                  className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                  placeholder="100"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-zinc-600">Max price (USD)</label>
+                <input
+                  value={searchPriceMax}
+                  onChange={(e) => setSearchPriceMax(e.target.value)}
+                  className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                  placeholder="1500"
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  disabled={!canSearch || searchLoading}
+                  onClick={runFacebookSearch}
+                  className={`w-full rounded-2xl px-4 py-2 text-sm font-extrabold text-white ${
+                    canSearch && !searchLoading ? 'bg-zinc-900 hover:bg-zinc-800' : 'cursor-not-allowed bg-zinc-300'
+                  }`}
+                >
+                  {searchLoading ? 'Searching...' : 'Search Marketplace'}
+                </button>
+              </div>
+            </div>
+            {searchError ? <div className="mt-3 text-sm font-semibold text-rose-700">{searchError}</div> : null}
+            {searchResults.length > 0 ? (
+              <div className="mt-4 grid grid-cols-1 gap-3">
+                {searchResults.map((item) => {
+                  const rowLabel = scoreToLabel(item.intelligence.score10);
+                  return (
+                    <div key={item.id} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-black text-zinc-900">{item.title}</div>
+                          <div className="mt-1 text-xs font-semibold text-zinc-600">
+                            Ask: {item.price ? fmtMoney(item.price) : 'Unknown'} • FMV:{' '}
+                            {fmtMoney(item.valuation.fairMarketValue)} • {item.valuation.priceSignal}
+                          </div>
+                        </div>
+                        <div className={`rounded-xl border px-2 py-1 text-right ${rowLabel.tone}`}>
+                          <div className="text-xs font-extrabold">Score</div>
+                          <div className="text-lg font-black">{item.intelligence.score10.toFixed(1)}</div>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-zinc-700">
+                        Market range: {fmtMoney(item.valuation.marketRange.low)}–{fmtMoney(item.valuation.marketRange.high)} • Distance:{' '}
+                        {item.intelligence.estimatedDistanceMiles} mi • Reputation: {item.intelligence.partReputation.score5.toFixed(1)}/5
+                      </div>
+                      {item.url ? (
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-zinc-800 underline"
+                        >
+                          Open source listing <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      ) : null}
+                      {item.intelligence.riskFlags.length ? (
+                        <ul className="mt-2 space-y-1">
+                          {item.intelligence.riskFlags.slice(0, 2).map((flag, idx) => (
+                            <li key={idx} className="text-xs text-zinc-700">
+                              • {flag}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
