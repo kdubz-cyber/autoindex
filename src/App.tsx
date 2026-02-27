@@ -1696,8 +1696,7 @@ export default function App() {
             {authMode === 'login' ? 'Login' : 'Create account'}
           </button>
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600">
-            Admin login: <span className="font-black">sino0491</span> /{' '}
-            <span className="font-black">Ktrill20!</span>
+            Use your account credentials to continue.
           </div>
         </div>
       </Drawer>
@@ -1837,7 +1836,7 @@ export default function App() {
           <>
             <div className="overflow-hidden rounded-[32px] border border-zinc-200 bg-white shadow-sm">
               <div className="grid grid-cols-1 lg:grid-cols-3">
-                <div className="bg-zinc-950 lg:col-span-2">
+                <div className="lg:col-span-2">
                   <SectionImage kind="hero" />
                 </div>
                 <div className="p-5">
