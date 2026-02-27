@@ -645,6 +645,11 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
   const [searchPriceMax, setSearchPriceMax] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [backendStatus, setBackendStatus] = useState<null | {
+    ok: boolean;
+    metaMarketplaceConfigured: boolean;
+    mode: string;
+  }>(null);
   const [searchResults, setSearchResults] = useState<
     Array<{
       id: string;
@@ -688,6 +693,24 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
 
   const canAnalyse = link.trim().length > 10;
   const canSearch = searchQuery.trim().length > 1;
+
+  useEffect(() => {
+    const loadStatus = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/system/status`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        setBackendStatus({
+          ok: Boolean(data?.ok),
+          metaMarketplaceConfigured: Boolean(data?.metaMarketplaceConfigured),
+          mode: String(data?.mode || 'unknown')
+        });
+      } catch {
+        setBackendStatus(null);
+      }
+    };
+    loadStatus();
+  }, []);
 
   const run = async () => {
     setLoading(true);
@@ -801,6 +824,17 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           <SectionImage kind="hero" />
         </div>
         <div className="p-5">
+          {backendStatus?.ok && !backendStatus.metaMarketplaceConfigured ? (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              Backend is online, but Facebook Marketplace API token is not configured (`META_CL_ACCESS_TOKEN` missing).
+            </div>
+          ) : null}
+          {!backendStatus ? (
+            <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+              Backend not reachable from this frontend. Set `VITE_API_BASE_URL` to your deployed API and allow this
+              origin in backend `ALLOWED_ORIGINS`.
+            </div>
+          ) : null}
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="text-xs font-bold text-zinc-500">Marketplace Analysis</div>

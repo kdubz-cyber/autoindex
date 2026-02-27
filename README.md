@@ -81,6 +81,19 @@ npm run preview
 
 GitHub Pages is static-only and cannot run the Node auth server. For secure backend auth, deploy to a platform that supports Node servers (Render, Railway, Fly.io, Vercel with server routes, etc.).
 
+### End-to-end production setup (GitHub Pages + API)
+
+1. Deploy backend using `render.yaml`.
+2. In Render, set:
+   - `META_CL_ACCESS_TOKEN`
+   - `ALLOWED_ORIGINS=https://kdubz-cyber.github.io`
+3. In GitHub repo settings, add secret:
+   - `VITE_API_BASE_URL=https://<your-render-service>.onrender.com`
+4. Re-run `Deploy to GitHub Pages` workflow.
+5. Verify:
+   - `https://<backend>/api/system/status` returns `metaMarketplaceConfigured: true`
+   - AutoIndex Marketplace search no longer shows backend/token warnings.
+
 ## Tech stack
 
 - React

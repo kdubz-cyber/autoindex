@@ -1,5 +1,6 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'node:crypto';
@@ -20,8 +21,22 @@ const USERS_PATH = path.join(__dirname, 'data', 'users.json');
 const HTTP_TIMEOUT_MS = 7000;
 const META_CL_BASE_URL = process.env.META_CL_BASE_URL || 'https://graph.facebook.com/v22.0';
 const META_CL_ACCESS_TOKEN = process.env.META_CL_ACCESS_TOKEN || '';
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((x) => x.trim())
+  .filter(Boolean);
 
 const app = express();
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (!ALLOWED_ORIGINS.length && !PROD) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+};
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
@@ -404,6 +419,16 @@ function authRequired(req, res, next) {
 
 app.get('/api/health', (_, res) => {
   res.json({ ok: true });
+});
+
+app.get('/api/system/status', (_, res) => {
+  res.json({
+    ok: true,
+    mode: PROD ? 'production' : 'development',
+    metaMarketplaceConfigured: Boolean(META_CL_ACCESS_TOKEN),
+    allowedOrigins: ALLOWED_ORIGINS,
+    apiVersion: '2026-02-27'
+  });
 });
 
 app.get('/api/auth/me', authRequired, (req, res) => {

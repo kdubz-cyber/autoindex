@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: autoindex-api
+    runtime: node
+    region: oregon
+    plan: starter
+    rootDir: .
+    buildCommand: npm install
+    startCommand: npm run server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://kdubz-cyber.github.io
+      - key: META_CL_BASE_URL
+        value: https://graph.facebook.com/v22.0
+      - key: META_CL_ACCESS_TOKEN
+        sync: false
