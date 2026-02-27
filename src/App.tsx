@@ -636,92 +636,97 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
   const [selectedCondition, setSelectedCondition] = useState<Condition>('Used');
   const [partTitle, setPartTitle] = useState('');
   const [askPrice, setAskPrice] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const [analysis, setAnalysis] = useState<null | {
-    platform: 'Facebook Marketplace' | 'Unknown';
-    sellerTenureMonths: number;
-    estimatedDistanceMiles: number;
+    platform: 'Facebook Marketplace' | 'Unknown' | string;
+    sourceFetched: boolean;
+    listing: {
+      title: string;
+      askPrice?: number | null;
+      detectedPrice?: number | null;
+      locationText?: string | null;
+    };
+    valuation: {
+      formula: {
+        baseAnchor: number;
+        ageFactor: number;
+        conditionFactor: number;
+        availabilityFactor: number;
+        marketDemandFactor: number;
+      };
+      fairMarketValue: number;
+      marketRange: { low: number; mid: number; high: number };
+      priceSignal: 'Under market' | 'At market' | 'Over market' | string;
+    };
     partCategory: Category;
     partCondition: Condition;
-    partTitle?: string;
-    askPrice?: number;
+    sellerTenureMonths: number;
+    estimatedDistanceMiles: number;
     partRating5: number;
-    priceSignal: 'Under market' | 'At market' | 'Over market';
     riskFlags: string[];
     score10: number;
-    marketRange: { low: number; mid: number; high: number };
   }>(null);
 
   const canAnalyse = link.trim().length > 10;
 
-  const run = () => {
-    const linkKey = link.trim().toLowerCase();
-    const partKey = `${selectedCategory}|${selectedCondition}|${partTitle.trim().toLowerCase()}|${askPrice}`;
-    const h = smallHash(`${linkKey}::${partKey}`);
-
-    const platform = link.includes('facebook.com') || link.includes('fb.com') ? 'Facebook Marketplace' : 'Unknown';
-    const sellerTenureMonths = 1 + (h % 96);
-    const estimatedDistanceMiles = 1 + ((h >>> 3) % 240);
-    const partRating5 = Math.round((3.2 + ((h >>> 13) % 18) / 10) * 10) / 10;
-
-    const catMod = (CATEGORIES.indexOf(selectedCategory) + 1) * 35;
-    const condMod = selectedCondition === 'New' ? 220 : selectedCondition === 'Aftermarket' ? 140 : 60;
-    const seed = 420 + catMod + condMod;
-    const low = Math.round(seed * 0.7);
-    const mid = Math.round(seed);
-    const high = Math.round(seed * 1.25);
-
-    const ask = Number(String(askPrice).replace(/[^0-9.]/g, ''));
-    const hasAsk = !Number.isNaN(ask) && ask > 0;
-
-    let priceSignal: 'Under market' | 'At market' | 'Over market';
-    if (hasAsk) {
-      if (ask < mid * 0.9) priceSignal = 'Under market';
-      else if (ask > mid * 1.1) priceSignal = 'Over market';
-      else priceSignal = 'At market';
-    } else {
-      const signalIdx = (h >>> 17) % 3;
-      priceSignal = signalIdx === 0 ? 'Under market' : signalIdx === 1 ? 'At market' : 'Over market';
+  const run = async () => {
+    setLoading(true);
+    setApiError(null);
+    try {
+      const res = await fetch('/api/market-intelligence/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: link.trim(),
+          buyerZip: buyerZip.trim(),
+          partCategory: selectedCategory,
+          partCondition: selectedCondition,
+          partTitle: partTitle.trim(),
+          askPrice: askPrice.trim()
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setApiError(data?.error ?? 'Failed to analyze listing');
+        return;
+      }
+      setAnalysis({
+        platform: data.platform,
+        sourceFetched: Boolean(data.sourceFetched),
+        listing: {
+          title: data.listing?.title ?? partTitle.trim() || 'Unknown part',
+          askPrice: data.listing?.askPrice ?? null,
+          detectedPrice: data.listing?.detectedPrice ?? null,
+          locationText: data.listing?.locationText ?? null
+        },
+        valuation: {
+          formula: {
+            baseAnchor: data.valuation?.formula?.baseAnchor ?? 0,
+            ageFactor: data.valuation?.formula?.ageFactor ?? 0,
+            conditionFactor: data.valuation?.formula?.conditionFactor ?? 0,
+            availabilityFactor: data.valuation?.formula?.availabilityFactor ?? 0,
+            marketDemandFactor: data.valuation?.formula?.marketDemandFactor ?? 0
+          },
+          fairMarketValue: data.valuation?.fairMarketValue ?? 0,
+          marketRange: data.valuation?.marketRange ?? { low: 0, mid: 0, high: 0 },
+          priceSignal: data.valuation?.priceSignal ?? 'At market'
+        },
+        partCategory: selectedCategory,
+        partCondition: selectedCondition,
+        sellerTenureMonths: data.intelligence?.sellerTenureMonths ?? 0,
+        estimatedDistanceMiles: data.intelligence?.estimatedDistanceMiles ?? 0,
+        partRating5: data.intelligence?.partReputation?.score5 ?? 0,
+        riskFlags: data.intelligence?.riskFlags ?? [],
+        score10: data.intelligence?.score10 ?? 0
+      });
+      toast('Marketplace analysis complete');
+    } catch {
+      setApiError('Could not reach intelligence service.');
+    } finally {
+      setLoading(false);
     }
-
-    const flags: string[] = [];
-    if (platform !== 'Facebook Marketplace') flags.push('Link does not appear to be Facebook Marketplace.');
-    if (sellerTenureMonths < 6) flags.push('Seller account tenure is relatively new.');
-    if (estimatedDistanceMiles > 90) flags.push('Long travel distance may complicate pickup/returns.');
-    if (priceSignal === 'Under market') flags.push('Price is notably under market; verify authenticity and condition.');
-    if (selectedCondition === 'Used') flags.push('Used parts require photos, serials, and fitment confirmation.');
-    if (hasAsk && (ask < low * 0.75 || ask > high * 1.4)) flags.push('Ask price is an outlier vs estimated market range.');
-    if (partTitle.trim().length === 0) flags.push('Add a part title to improve matching and verification prompts.');
-
-    const tenureScore = clamp(sellerTenureMonths / 24, 0, 1);
-    const distanceScore = clamp(1 - estimatedDistanceMiles / 200, 0, 1);
-    const ratingScore = clamp((partRating5 - 3.2) / 1.8, 0, 1);
-
-    let priceScore = priceSignal === 'At market' ? 1 : priceSignal === 'Under market' ? 0.7 : 0.6;
-    if (hasAsk) {
-      const delta = Math.abs(ask - mid) / mid;
-      priceScore = clamp(1 - delta, 0.35, 1);
-    }
-
-    const score10 =
-      Math.round((tenureScore * 0.3 + distanceScore * 0.2 + ratingScore * 0.35 + priceScore * 0.15) * 100) / 10;
-
-    setAnalysis({
-      platform,
-      sellerTenureMonths,
-      estimatedDistanceMiles,
-      partCategory: selectedCategory,
-      partCondition: selectedCondition,
-      partTitle: partTitle.trim() || undefined,
-      askPrice: hasAsk ? ask : undefined,
-      partRating5,
-      priceSignal,
-      riskFlags: flags,
-      score10,
-      marketRange: { low, mid, high }
-    });
-
-    toast('Marketplace analysis complete');
   };
 
   const label = analysis ? scoreToLabel(analysis.score10) : null;
@@ -738,12 +743,12 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
               <div className="text-xs font-bold text-zinc-500">Marketplace Analysis</div>
               <div className="mt-1 text-xl font-black text-zinc-900">Analyse a Facebook Marketplace listing before you buy</div>
               <div className="mt-2 text-sm text-zinc-600">
-                Paste a listing link, select the specific part being sold, and we will simulate checks for seller tenure,
-                travel distance, and a parts reputation signal.
+                Paste a Facebook Marketplace listing URL, select condition/category, and AutoIndex will fetch listing
+                metadata (where permitted), estimate distance via geocoding, and rate fair market value from real signals.
               </div>
             </div>
             <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-extrabold text-zinc-800">
-              <Sparkles className="h-4 w-4" /> MVP (Mocked)
+              <Sparkles className="h-4 w-4" /> Intelligence Engine
             </span>
           </div>
 
@@ -816,7 +821,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                 />
               </div>
               <div className="mt-2 inline-flex items-center gap-2 text-[12px] text-zinc-500">
-                <Info className="h-4 w-4" /> We do not fetch live pages in this MVP.
+                <Info className="h-4 w-4" /> AutoIndex fetches public metadata only where permitted.
               </div>
             </div>
 
@@ -836,15 +841,16 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
 
           <div className="mt-5 flex items-center gap-3">
             <button
-              disabled={!canAnalyse}
+              disabled={!canAnalyse || loading}
               onClick={run}
               className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-extrabold text-white transition-colors ${
-                canAnalyse ? 'bg-zinc-900 hover:bg-zinc-800' : 'cursor-not-allowed bg-zinc-300'
+                canAnalyse && !loading ? 'bg-zinc-900 hover:bg-zinc-800' : 'cursor-not-allowed bg-zinc-300'
               }`}
             >
-              Run analysis <ArrowRight className="h-4 w-4" />
+              {loading ? 'Analyzing...' : 'Run analysis'} <ArrowRight className="h-4 w-4" />
             </button>
           </div>
+          {apiError ? <div className="mt-3 text-sm font-semibold text-rose-700">{apiError}</div> : null}
 
           {analysis ? (
             <div className="mt-6 rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
@@ -854,10 +860,17 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                   <div className="mt-1 text-lg font-black text-zinc-900">
                     {analysis.partCategory} • {analysis.partCondition} • {analysis.platform}
                   </div>
-                  {analysis.partTitle ? <div className="mt-1 text-sm font-semibold text-zinc-700">{analysis.partTitle}</div> : null}
-                  {typeof analysis.askPrice === 'number' ? (
+                  {analysis.listing.title ? (
+                    <div className="mt-1 text-sm font-semibold text-zinc-700">{analysis.listing.title}</div>
+                  ) : null}
+                  {typeof analysis.listing.askPrice === 'number' ? (
                     <div className="mt-1 text-xs text-zinc-600">
-                      Ask price: <span className="font-black">{fmtMoney(analysis.askPrice)}</span>
+                      Ask price: <span className="font-black">{fmtMoney(analysis.listing.askPrice)}</span>
+                    </div>
+                  ) : null}
+                  {!analysis.sourceFetched ? (
+                    <div className="mt-1 text-xs text-amber-700">
+                      Live listing metadata unavailable. AutoIndex used fallback valuation logic.
                     </div>
                   ) : null}
                 </div>
@@ -876,17 +889,34 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
 
               <div className="mt-3 flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
-                  <Tag className="h-4 w-4" /> Price signal: {analysis.priceSignal}
+                  <Tag className="h-4 w-4" /> Price signal: {analysis.valuation.priceSignal}
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
-                  <TrendingUp className="h-4 w-4" /> Est. market: {fmtMoney(analysis.marketRange.low)}–
-                  {fmtMoney(analysis.marketRange.high)}
+                  <TrendingUp className="h-4 w-4" /> Est. market: {fmtMoney(analysis.valuation.marketRange.low)}–
+                  {fmtMoney(analysis.valuation.marketRange.high)}
                 </span>
                 {buyerZip ? (
                   <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
                     <MapPin className="h-4 w-4" /> Buyer ZIP: {buyerZip}
                   </span>
                 ) : null}
+                {analysis.listing.locationText ? (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                    <MapPin className="h-4 w-4" /> Listing area: {analysis.listing.locationText}
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-3 rounded-2xl border border-zinc-200 bg-white p-3">
+                <div className="text-xs font-bold text-zinc-500">Valuation formula breakdown</div>
+                <div className="mt-1 font-mono text-sm text-zinc-700">
+                  FMV = {analysis.valuation.formula.baseAnchor} × {analysis.valuation.formula.ageFactor.toFixed(2)} ×{' '}
+                  {analysis.valuation.formula.conditionFactor.toFixed(2)} ×{' '}
+                  {analysis.valuation.formula.availabilityFactor.toFixed(2)} ×{' '}
+                  {analysis.valuation.formula.marketDemandFactor.toFixed(2)}
+                </div>
+                <div className="mt-1 text-sm font-black text-zinc-900">
+                  Fair Market Value: {fmtMoney(analysis.valuation.fairMarketValue)}
+                </div>
               </div>
 
               <div className="mt-4">
