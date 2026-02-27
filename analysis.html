@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marketplace Analysis – AutoIndex</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <img src="images/logo.png" alt="AutoIndex Logo" />
+      <h1>AutoIndex</h1>
+    </div>
+    <nav>
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="analysis.html">Marketplace Analysis</a></li>
+        <li><a href="vendor.html">Become a Vendor</a></li>
+        <li><a href="#" onclick="toggleSaved()">Saved (<span id="saved-count">0</span>)</a></li>
+        <li><a href="#" onclick="toggleCart()">Cart (<span id="cart-count">0</span>)</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="container">
+    <section class="hero">
+      <h1>Marketplace Analysis</h1>
+      <p>Assess the legitimacy and pricing of Facebook Marketplace listings before you buy.</p>
+      <div class="valuation-form">
+        <input type="text" id="fb-link" placeholder="Facebook Marketplace link" />
+        <select id="part-category">
+          <option value="Engine">Engine</option>
+          <option value="Suspension">Suspension</option>
+          <option value="Transmission">Transmission</option>
+          <option value="Brakes">Brakes</option>
+          <option value="Rims">Rims</option>
+          <option value="Tires">Tires</option>
+          <option value="Exhaust">Exhaust</option>
+          <option value="Chassis">Chassis</option>
+          <option value="Audio">Audio</option>
+        </select>
+        <select id="analysis-condition">
+          <option value="used">Used</option>
+          <option value="new">New</option>
+          <option value="aftermarket">Aftermarket</option>
+        </select>
+        <input type="text" id="ask-price" placeholder="Ask price (optional)" />
+        <button id="run-analysis">Run Analysis</button>
+      </div>
+      <div id="analysis-results" style="margin-top: 2rem;"></div>
+    </section>
+  </div>
+
+  <!-- Cart and Saved Drawers reused from main site -->
+  <div id="cart-drawer" class="drawer">
+    <button class="close-btn" onclick="toggleCart()">×</button>
+    <h2>Your Cart</h2>
+    <ul id="cart-list"></ul>
+    <p id="cart-total">Total: $0.00</p>
+  </div>
+  <div id="saved-drawer" class="drawer">
+    <button class="close-btn" onclick="toggleSaved()">×</button>
+    <h2>Saved Valuations</h2>
+    <ul id="saved-list"></ul>
+  </div>
+
+  <footer>
+    &copy; 2026 AutoIndex. All rights reserved.
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    // Simple analysis simulation
+    document.getElementById('run-analysis').addEventListener('click', () => {
+      const link = document.getElementById('fb-link').value.trim();
+      const category = document.getElementById('part-category').value;
+      const condition = document.getElementById('analysis-condition').value;
+      const price = document.getElementById('ask-price').value.trim();
+      if (!link) {
+        alert('Please paste a Facebook Marketplace link.');
+        return;
+      }
+      // Simulate analysis metrics
+      const tenureMonths = Math.floor(Math.random() * 48) + 1; // 1-48 months
+      const distanceMiles = Math.floor(Math.random() * 500) + 5; // 5-505 miles
+      const partRating = (Math.random() * 5).toFixed(1);
+      const priceSignal = ['Under Market','At Market','Over Market'][Math.floor(Math.random() * 3)];
+      const scoreRaw = Math.random() * 10;
+      const score = scoreRaw.toFixed(1);
+      let verdict;
+      if (scoreRaw > 8) verdict = 'Excellent';
+      else if (scoreRaw > 6) verdict = 'Good';
+      else if (scoreRaw > 4) verdict = 'Fair';
+      else verdict = 'Proceed Carefully';
+      const resultsDiv = document.getElementById('analysis-results');
+      resultsDiv.innerHTML = `
+        <div style="background:#fff;padding:1rem;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <h2>Analysis Results</h2>
+          <p><strong>Seller tenure:</strong> ${tenureMonths} months on Facebook</p>
+          <p><strong>Estimated distance:</strong> ${distanceMiles} miles away</p>
+          <p><strong>Part rating:</strong> ${partRating} / 5</p>
+          <p><strong>Price signal:</strong> ${priceSignal}</p>
+          <h3>Score: ${score} / 10 – ${verdict}</h3>
+        </div>
+      `;
+    });
+  </script>
+</body>
+</html>

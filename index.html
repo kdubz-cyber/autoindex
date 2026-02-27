@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoIndex – Performance Parts Valuation & Marketplace</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <img src="images/logo.png" alt="AutoIndex Logo" />
+      <h1>AutoIndex</h1>
+    </div>
+    <nav>
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="analysis.html">Marketplace Analysis</a></li>
+        <li><a href="vendor.html">Become a Vendor</a></li>
+        <li><a href="#" onclick="toggleSaved()">Saved (<span id="saved-count">0</span>)</a></li>
+        <li><a href="#" onclick="toggleCart()">Cart (<span id="cart-count">0</span>)</a></li>
+      </ul>
+    </nav>
+  </header>
+  
+  <div class="container">
+    <section class="hero">
+      <h1>Your Performance Parts Pricing Companion</h1>
+      <p>Discover fair market values for used, new and aftermarket parts across categories.</p>
+      <div class="valuation-form">
+        <input type="text" id="part-input" placeholder="Part name (e.g. turbocharger)" />
+        <input type="text" id="vehicle-input" placeholder="Vehicle (e.g. 2015 Subaru WRX)" />
+        <input type="text" id="zip-input" placeholder="ZIP code" />
+        <select id="condition-select">
+          <option value="used">Used</option>
+          <option value="new">New</option>
+          <option value="aftermarket">Aftermarket</option>
+        </select>
+        <button id="valuation-btn">Get Value</button>
+      </div>
+      <div class="fair-range">
+        <h2>Fair Market Range</h2>
+        <div id="range-bar" class="range-bar">
+          <!-- segments inserted via JS -->
+        </div>
+        <div class="label" id="valuation-range-label">Enter details to see price range</div>
+      </div>
+    </section>
+
+    <h2>Browse Categories</h2>
+    <div class="categories">
+      <div class="category-card"><img src="images/engine.png" alt="Engine" /><span>Engine</span></div>
+      <div class="category-card"><img src="images/brakes.png" alt="Suspension" /><span>Suspension</span></div>
+      <div class="category-card"><img src="images/brakes.png" alt="Transmission" /><span>Transmission</span></div>
+      <div class="category-card"><img src="images/brakes.png" alt="Brakes" /><span>Brakes</span></div>
+      <div class="category-card"><img src="images/brakes.png" alt="Rims" /><span>Rims</span></div>
+      <div class="category-card"><img src="images/brakes.png" alt="Tires" /><span>Tires</span></div>
+      <div class="category-card"><img src="images/brakes.png" alt="Exhaust" /><span>Exhaust</span></div>
+      <div class="category-card"><img src="images/brakes.png" alt="Chassis" /><span>Chassis</span></div>
+      <div class="category-card"><img src="images/brakes.png" alt="Audio" /><span>Audio</span></div>
+    </div>
+
+    <h2>Marketplace Listings</h2>
+    <div class="listings">
+      <!-- Example listings -->
+      <div class="listing-card">
+        <img src="images/engine.png" alt="Turbo" />
+        <h3>Performance Turbo Kit</h3>
+        <p>Vendor: SpeedWorks</p>
+        <div class="price">$899.00</div>
+        <button onclick="addToCart('Performance Turbo Kit', 899.00)">Add to Cart</button>
+        <button class="save-btn" onclick="saveItem('Performance Turbo Kit', 899.00)">Save</button>
+      </div>
+      <div class="listing-card">
+        <img src="images/brakes.png" alt="Coilovers" />
+        <h3>Adjustable Coilover Set</h3>
+        <p>Vendor: RideTech</p>
+        <div class="price">$550.00</div>
+        <button onclick="addToCart('Adjustable Coilover Set', 550.00)">Add to Cart</button>
+        <button class="save-btn" onclick="saveItem('Adjustable Coilover Set', 550.00)">Save</button>
+      </div>
+      <div class="listing-card">
+        <img src="images/brakes.png" alt="Exhaust" />
+        <h3>Cat-Back Exhaust System</h3>
+        <p>Vendor: FlowForce</p>
+        <div class="price">$420.00</div>
+        <button onclick="addToCart('Cat-Back Exhaust System', 420.00)">Add to Cart</button>
+        <button class="save-btn" onclick="saveItem('Cat-Back Exhaust System', 420.00)">Save</button>
+      </div>
+      <div class="listing-card">
+        <img src="images/brakes.png" alt="Big Brake Kit" />
+        <h3>Big Brake Upgrade Kit</h3>
+        <p>Vendor: StopMaster</p>
+        <div class="price">$750.00</div>
+        <button onclick="addToCart('Big Brake Upgrade Kit', 750.00)">Add to Cart</button>
+        <button class="save-btn" onclick="saveItem('Big Brake Upgrade Kit', 750.00)">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cart Drawer -->
+  <div id="cart-drawer" class="drawer">
+    <button class="close-btn" onclick="toggleCart()">×</button>
+    <h2>Your Cart</h2>
+    <ul id="cart-list"></ul>
+    <p id="cart-total">Total: $0.00</p>
+  </div>
+  <!-- Saved Drawer -->
+  <div id="saved-drawer" class="drawer">
+    <button class="close-btn" onclick="toggleSaved()">×</button>
+    <h2>Saved Valuations</h2>
+    <ul id="saved-list"></ul>
+  </div>
+
+  <footer>
+    &copy; 2026 AutoIndex. All rights reserved.
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
