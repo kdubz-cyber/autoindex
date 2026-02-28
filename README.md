@@ -21,12 +21,16 @@ Backend auth uses:
 - Signed session tokens with `jsonwebtoken`
 - HttpOnly session cookies (`ai_session`)
 
-Default admin credentials:
+Default admin credentials are seeded in local development only:
 
 - Username: `sino0491`
 - Password: `Ktrill20!`
 
-Set `SESSION_SECRET` in production.
+In production, set all of these environment variables:
+
+- `SESSION_SECRET`
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD`
 
 For Facebook Marketplace intelligence search, also set:
 
@@ -87,6 +91,9 @@ GitHub Pages is static-only and cannot run the Node auth server. For secure back
 2. In Render, set:
    - `META_CL_ACCESS_TOKEN`
    - `ALLOWED_ORIGINS=https://kdubz-cyber.github.io`
+   - `ADMIN_USERNAME=<your-admin-username>`
+   - `ADMIN_PASSWORD=<strong-admin-password>`
+   - `SESSION_SECRET=<long-random-secret>`
 3. In GitHub repo settings, add secret:
    - `VITE_API_BASE_URL=https://<your-render-service>.onrender.com`
 4. Re-run `Deploy to GitHub Pages` workflow.

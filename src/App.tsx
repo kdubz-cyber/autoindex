@@ -121,6 +121,10 @@ type SessionUser = {
   vendorLocation?: string;
 };
 
+type LocalAuthUser = SessionUser & {
+  password: string;
+};
+
 type OrderRecord = {
   id: string;
   ts: number;
@@ -143,6 +147,16 @@ type VendorFeedback = {
   rating: number;
   comment: string;
   ts: number;
+};
+
+const MIN_PASSWORD_LENGTH = 8;
+const LOCAL_AUTH_USERS_KEY = 'autoindex_local_auth_users';
+const LOCAL_AUTH_SESSION_KEY = 'autoindex_local_auth_session';
+const LOCAL_DEMO_ADMIN: LocalAuthUser = {
+  id: 'local-admin',
+  username: 'sino0491',
+  password: 'Ktrill20!',
+  role: 'admin'
 };
 
 const AUTO_INDEX_LOGO =
@@ -535,6 +549,48 @@ function useLocalStorageState<T>(key: string, fallback: T) {
   return [state, setState] as const;
 }
 
+function ensureLocalAuthUsers(): LocalAuthUser[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_AUTH_USERS_KEY);
+    const parsed = raw ? (JSON.parse(raw) as LocalAuthUser[]) : [];
+    const users = Array.isArray(parsed) ? parsed : [];
+    if (!users.some((u) => u.username.toLowerCase() === LOCAL_DEMO_ADMIN.username.toLowerCase())) {
+      const next = [LOCAL_DEMO_ADMIN, ...users];
+      localStorage.setItem(LOCAL_AUTH_USERS_KEY, JSON.stringify(next));
+      return next;
+    }
+    return users;
+  } catch {
+    const seeded = [LOCAL_DEMO_ADMIN];
+    localStorage.setItem(LOCAL_AUTH_USERS_KEY, JSON.stringify(seeded));
+    return seeded;
+  }
+}
+
+function writeLocalAuthUsers(users: LocalAuthUser[]) {
+  localStorage.setItem(LOCAL_AUTH_USERS_KEY, JSON.stringify(users));
+}
+
+function readLocalSession(): SessionUser | null {
+  try {
+    const raw = localStorage.getItem(LOCAL_AUTH_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SessionUser;
+    if (!parsed?.id || !parsed?.username || !parsed?.role) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalSession(user: SessionUser | null) {
+  if (!user) {
+    localStorage.removeItem(LOCAL_AUTH_SESSION_KEY);
+    return;
+  }
+  localStorage.setItem(LOCAL_AUTH_SESSION_KEY, JSON.stringify(user));
+}
+
 function SectionImage({ kind }: { kind: 'hero' | 'learn' | 'vendors' | Category }) {
   const map: Record<string, { t: string; s: string }> = {
     hero: {
@@ -718,7 +774,7 @@ function ListingCard({ listing, vendor, onSave, onCart, onOpen }: ListingCardPro
   return (
     <div className="group overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition-shadow hover:shadow-md">
       <button className="block w-full text-left" onClick={() => onOpen(listing.id)}>
-        <div className="aspect-[16/9] bg-zinc-950">
+        <div className="aspect-[16/9] bg-zinc-100">
           <SectionImage kind={listing.category} />
         </div>
       </button>
@@ -1078,7 +1134,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm lg:col-span-2">
-        <div className="aspect-[16/9] bg-zinc-950">
+        <div className="aspect-[16/9] bg-zinc-100">
           <SectionImage kind="hero" />
         </div>
         <div className="p-5">
@@ -1394,7 +1450,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
       </div>
 
       <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
-        <div className="aspect-[16/10] bg-zinc-950">
+        <div className="aspect-[16/10] bg-zinc-100">
           <SectionImage kind="learn" />
         </div>
         <div className="p-5">
@@ -1405,10 +1461,13 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
             pull part reputation from verified purchase signals.
           </div>
           <button
-            onClick={() => toast('Coming soon: Marketplace account connection')}
+            onClick={() => {
+              window.open('https://www.facebook.com/marketplace/', '_blank', 'noopener,noreferrer');
+              toast('Opened Facebook Marketplace');
+            }}
             className="mt-4 w-full rounded-2xl bg-zinc-900 py-2.5 text-sm font-extrabold text-white transition-colors hover:bg-zinc-800"
           >
-            Coming soon: Connect Marketplace accounts
+            Open Facebook Marketplace
           </button>
         </div>
       </div>
@@ -1471,6 +1530,8 @@ export default function App() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [vendorApplyOpen, setVendorApplyOpen] = useState(false);
+  const [vendorApplyName, setVendorApplyName] = useState('');
+  const [vendorApplyLocation, setVendorApplyLocation] = useState('');
 
   const listingsRef = useRef<HTMLDivElement | null>(null);
   const combinedVendors = useMemo(() => [...VENDORS, ...extraVendors], [extraVendors]);
@@ -1479,8 +1540,34 @@ export default function App() {
     [userListings]
   );
 
+  const upsertVendorDirectory = (user: SessionUser) => {
+    if (user.role !== 'vendor' || !user.vendorId) return;
+    setExtraVendors((prev) => {
+      if (prev.some((v) => v.id === user.vendorId)) return prev;
+      return [
+        ...prev,
+        {
+          id: user.vendorId,
+          name: user.vendorName ?? `${user.username} Performance`,
+          location: user.vendorLocation ?? 'Unknown, USA',
+          rating: 5,
+          reviews: 0,
+          verified: false,
+          fastShip: false
+        }
+      ];
+    });
+  };
+
   useEffect(() => {
     const hydrateSession = async () => {
+      if (!HAS_API_BASE) {
+        ensureLocalAuthUsers();
+        const localSession = readLocalSession();
+        setSession(localSession);
+        if (localSession) upsertVendorDirectory(localSession);
+        return;
+      }
       try {
         const res = await fetch(`${API_BASE_URL}/api/auth/me`, { credentials: 'include' });
         if (!res.ok) {
@@ -1489,23 +1576,7 @@ export default function App() {
         }
         const data = (await res.json()) as { user: SessionUser };
         setSession(data.user);
-        if (data.user.role === 'vendor' && data.user.vendorId) {
-          setExtraVendors((prev) => {
-            if (prev.some((v) => v.id === data.user.vendorId)) return prev;
-            return [
-              ...prev,
-              {
-                id: data.user.vendorId,
-                name: data.user.vendorName ?? `${data.user.username} Performance`,
-                location: data.user.vendorLocation ?? 'Unknown, USA',
-                rating: 5,
-                reviews: 0,
-                verified: false,
-                fastShip: false
-              }
-            ];
-          });
-        }
+        upsertVendorDirectory(data.user);
       } catch {
         setSession(null);
       }
@@ -1584,6 +1655,30 @@ export default function App() {
       toast('Enter username and password');
       return;
     }
+    if (!HAS_API_BASE) {
+      const users = ensureLocalAuthUsers();
+      const found = users.find((u) => u.username.toLowerCase() === username.toLowerCase());
+      if (!found || found.password !== authPassword) {
+        toast('Invalid login credentials');
+        return;
+      }
+      const localUser: SessionUser = {
+        id: found.id,
+        username: found.username,
+        role: found.role,
+        vendorId: found.vendorId,
+        vendorName: found.vendorName,
+        vendorLocation: found.vendorLocation
+      };
+      writeLocalSession(localUser);
+      setSession(localUser);
+      upsertVendorDirectory(localUser);
+      setAuthOpen(false);
+      setAuthPassword('');
+      setReviewComment('');
+      toast(`Logged in as ${localUser.role}`);
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
@@ -1597,23 +1692,7 @@ export default function App() {
         return;
       }
       setSession(data.user);
-      if (data.user.role === 'vendor' && data.user.vendorId) {
-        setExtraVendors((prev) => {
-          if (prev.some((v) => v.id === data.user!.vendorId)) return prev;
-          return [
-            ...prev,
-            {
-              id: data.user.vendorId!,
-              name: data.user.vendorName ?? `${data.user.username} Performance`,
-              location: data.user.vendorLocation ?? 'Unknown, USA',
-              rating: 5,
-              reviews: 0,
-              verified: false,
-              fastShip: false
-            }
-          ];
-        });
-      }
+      upsertVendorDirectory(data.user);
       setAuthOpen(false);
       setAuthPassword('');
       setReviewComment('');
@@ -1625,8 +1704,41 @@ export default function App() {
 
   const signup = async () => {
     const username = authUsername.trim();
-    if (!username || authPassword.length < 6) {
-      toast('Use a username and password of at least 6 characters');
+    if (!username || authPassword.length < MIN_PASSWORD_LENGTH) {
+      toast(`Use a username and password of at least ${MIN_PASSWORD_LENGTH} characters`);
+      return;
+    }
+    if (!HAS_API_BASE) {
+      const users = ensureLocalAuthUsers();
+      const exists = users.some((u) => u.username.toLowerCase() === username.toLowerCase());
+      if (exists) {
+        toast('Username already exists');
+        return;
+      }
+      const localUser: LocalAuthUser = {
+        id: `local-${Date.now()}`,
+        username,
+        password: authPassword,
+        role: authRole,
+        vendorId: authRole === 'vendor' ? `vx-local-${Date.now()}` : undefined,
+        vendorName: authRole === 'vendor' ? authVendorName.trim() || `${username} Performance` : undefined,
+        vendorLocation: authRole === 'vendor' ? authVendorLocation.trim() || 'Unknown, USA' : undefined
+      };
+      writeLocalAuthUsers([localUser, ...users]);
+      const sessionUser: SessionUser = {
+        id: localUser.id,
+        username: localUser.username,
+        role: localUser.role,
+        vendorId: localUser.vendorId,
+        vendorName: localUser.vendorName,
+        vendorLocation: localUser.vendorLocation
+      };
+      writeLocalSession(sessionUser);
+      setSession(sessionUser);
+      upsertVendorDirectory(sessionUser);
+      setAuthOpen(false);
+      setAuthPassword('');
+      toast('Account created');
       return;
     }
     try {
@@ -1648,20 +1760,7 @@ export default function App() {
         return;
       }
       setSession(data.user);
-      if (data.user.role === 'vendor' && data.user.vendorId) {
-        setExtraVendors((prev) => [
-          ...prev,
-          {
-            id: data.user.vendorId!,
-            name: data.user.vendorName ?? `${data.user.username} Performance`,
-            location: data.user.vendorLocation ?? 'Unknown, USA',
-            rating: 5,
-            reviews: 0,
-            verified: false,
-            fastShip: false
-          }
-        ]);
-      }
+      upsertVendorDirectory(data.user);
       setAuthOpen(false);
       setAuthPassword('');
       toast('Account created');
@@ -1880,7 +1979,7 @@ export default function App() {
                     listingTitle: item.title
                   }));
                   setOrders((prev) => [...created, ...prev]);
-                  toast('Checkout completed (simulated)');
+                  toast('Checkout completed');
                   setCart([]);
                 }}
                 className="mt-3 w-full rounded-2xl bg-zinc-900 py-2.5 text-sm font-extrabold text-white hover:bg-zinc-800"
@@ -1932,7 +2031,7 @@ export default function App() {
       <Drawer open={detailOpen} title="Listing" onClose={() => setDetailOpen(false)}>
         {currentDetail?.listing ? (
           <div className="space-y-4">
-            <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-950">
+            <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100">
               <SectionImage kind={currentDetail.listing.category} />
             </div>
             <div>
@@ -2066,13 +2165,14 @@ export default function App() {
       <Drawer open={vendorApplyOpen} title="Become a vendor" onClose={() => setVendorApplyOpen(false)}>
         <div className="space-y-4">
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-            This is a mocked onboarding flow. In production, this would capture business details, fulfilment policies, and
-            catalogue feeds.
+            Submit your business details and complete signup as a Vendor account to access the vendor dashboard.
           </div>
           <div className="space-y-3">
             <div>
               <div className="text-xs font-bold text-zinc-600">Business name</div>
               <input
+                value={vendorApplyName}
+                onChange={(e) => setVendorApplyName(e.target.value)}
                 className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
                 placeholder="Your shop name"
               />
@@ -2080,18 +2180,41 @@ export default function App() {
             <div>
               <div className="text-xs font-bold text-zinc-600">Primary location</div>
               <input
+                value={vendorApplyLocation}
+                onChange={(e) => setVendorApplyLocation(e.target.value)}
                 className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
                 placeholder="City, State"
               />
             </div>
             <button
               onClick={() => {
-                toast('Vendor application submitted (simulated)');
+                if (!vendorApplyName.trim() || !vendorApplyLocation.trim()) {
+                  toast('Enter business name and location');
+                  return;
+                }
+                if (session?.role === 'vendor') {
+                  toast('You already have a vendor account');
+                  setVendorApplyOpen(false);
+                  return;
+                }
+                if (session?.role === 'individual') {
+                  toast('Log out, then sign up as Vendor to complete onboarding');
+                  setVendorApplyOpen(false);
+                  return;
+                }
+                setAuthMode('signup');
+                setAuthRole('vendor');
+                setAuthVendorName(vendorApplyName.trim());
+                setAuthVendorLocation(vendorApplyLocation.trim());
+                setAuthOpen(true);
                 setVendorApplyOpen(false);
+                toast('Complete vendor signup to finish onboarding');
+                setVendorApplyName('');
+                setVendorApplyLocation('');
               }}
               className="w-full rounded-2xl bg-zinc-900 py-2.5 text-sm font-extrabold text-white hover:bg-zinc-800"
             >
-              Submit application
+              Continue
             </button>
           </div>
         </div>
@@ -2180,7 +2303,9 @@ export default function App() {
             {authMode === 'login' ? 'Login' : 'Create account'}
           </button>
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600">
-            Use your account credentials to continue.
+            {HAS_API_BASE
+              ? `Use your account credentials to continue. Password minimum: ${MIN_PASSWORD_LENGTH} characters.`
+              : `Template mode active: account data is stored in this browser only. Password minimum: ${MIN_PASSWORD_LENGTH} characters.`}
           </div>
         </div>
       </Drawer>
@@ -2242,11 +2367,14 @@ export default function App() {
                   </span>
                   <button
                     onClick={async () => {
-                      try {
-                        await fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
-                      } catch {
-                        // Ignore network errors; clear client session regardless.
+                      if (HAS_API_BASE) {
+                        try {
+                          await fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+                        } catch {
+                          // Ignore network errors; clear client session regardless.
+                        }
                       }
+                      writeLocalSession(null);
                       setSession(null);
                       setActiveTab('Valuation');
                       toast('Logged out');
@@ -2310,6 +2438,15 @@ export default function App() {
               <Pill>
                 <TrendingUp className="mr-1 h-3.5 w-3.5" /> Market comps
               </Pill>
+              {HAS_API_BASE ? (
+                <Pill>
+                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Backend connected
+                </Pill>
+              ) : (
+                <Pill>
+                  <Info className="mr-1 h-3.5 w-3.5" /> Template mode
+                </Pill>
+              )}
             </div>
           </nav>
         </div>
@@ -2797,7 +2934,7 @@ export default function App() {
 
         {activeTab === 'Vendors' ? (
           <div className="overflow-hidden rounded-[32px] border border-zinc-200 bg-white shadow-sm">
-            <div className="aspect-[16/6] bg-zinc-950">
+            <div className="aspect-[16/6] bg-zinc-100">
               <SectionImage kind="vendors" />
             </div>
             <div className="p-6">
@@ -2854,7 +2991,12 @@ export default function App() {
                         View listings
                       </button>
                       <button
-                        onClick={() => toast('Storefront opened (simulated)')}
+                        onClick={() => {
+                          setVendorId(v.id);
+                          setActiveTab('Valuation');
+                          setTimeout(() => listingsRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
+                          toast(`${v.name} storefront opened`);
+                        }}
                         className="flex-1 rounded-2xl border border-zinc-200 bg-white py-2 text-sm font-extrabold hover:bg-zinc-50"
                       >
                         Storefront
@@ -2870,7 +3012,7 @@ export default function App() {
         {activeTab === 'Learn' ? (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="overflow-hidden rounded-[32px] border border-zinc-200 bg-white shadow-sm">
-              <div className="aspect-[16/9] bg-zinc-950">
+              <div className="aspect-[16/9] bg-zinc-100">
                 <SectionImage kind="learn" />
               </div>
               <div className="p-6">
@@ -2910,7 +3052,10 @@ export default function App() {
                   </div>
                   <div className="mt-2 text-sm text-zinc-600">Save a parts list and track market pricing over time.</div>
                   <button
-                    onClick={() => toast('Build list created (simulated)')}
+                    onClick={() => {
+                      setSavedOpen(true);
+                      toast('Saved list opened');
+                    }}
                     className="mt-3 rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
                   >
                     Create list
@@ -2923,7 +3068,10 @@ export default function App() {
                   </div>
                   <div className="mt-2 text-sm text-zinc-600">Guidance for spotting counterfeits and mismatched numbers.</div>
                   <button
-                    onClick={() => toast('Authenticity guide opened (simulated)')}
+                    onClick={() => {
+                      setActiveTab('Marketplace');
+                      toast('Use risk checklist in Marketplace analysis');
+                    }}
                     className="mt-3 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold hover:bg-zinc-50"
                   >
                     Open guide

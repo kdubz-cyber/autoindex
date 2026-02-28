@@ -13,9 +13,9 @@ const __dirname = path.dirname(__filename);
 
 const PORT = Number(process.env.PORT || 3001);
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change-this-in-production';
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'sino0491';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Ktrill20!';
 const PROD = process.env.NODE_ENV === 'production';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || (PROD ? '' : 'sino0491');
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (PROD ? '' : 'Ktrill20!');
 const TOKEN_TTL = '7d';
 const USERS_PATH = path.join(__dirname, 'data', 'users.json');
 const HTTP_TIMEOUT_MS = 7000;
@@ -422,6 +422,12 @@ function writeStore(store) {
 }
 
 async function seedAdmin() {
+  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+    if (!PROD) {
+      console.warn('Admin seed skipped: missing ADMIN_USERNAME/ADMIN_PASSWORD');
+    }
+    return;
+  }
   const store = readStore();
   const existing = store.users.find((u) => u.username.toLowerCase() === ADMIN_USERNAME.toLowerCase());
   if (existing) return;
