@@ -55,6 +55,7 @@ type AvailabilityKey =
   | 'backordered_3_plus'
   | 'discontinued'
   | 'rare_jdm_nla';
+type MarketplaceRarityProfile = AvailabilityKey | 'auto';
 type DemandKey = 'low' | 'moderate' | 'high' | 'cult_track_proven';
 
 type Listing = {
@@ -376,7 +377,9 @@ type MarketplaceSearchResult = {
       ageFactor: number;
       conditionFactor: number;
       availabilityFactor: number;
+      availabilityKey?: AvailabilityKey;
       marketDemandFactor: number;
+      dealerOriginalPrice?: number | null;
     };
   };
   intelligence: {
@@ -407,6 +410,13 @@ function parseEngineMilesInput(raw: string | number | null | undefined) {
   return miles;
 }
 
+function parsePriceInput(raw: string | number | null | undefined) {
+  if (raw == null) return null;
+  const value = Number(String(raw).replace(/[^0-9.]/g, ''));
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return value;
+}
+
 function ageBandFromPartYear(partYear: number | null): AgeBandKey | null {
   if (partYear == null) return null;
   const currentYear = new Date().getFullYear();
@@ -429,6 +439,53 @@ function engineMileageFactorForMarketplace(
   if (engineMiles <= 100_000) return 0.88;
   if (engineMiles <= 150_000) return 0.78;
   return 0.68;
+}
+
+function inferAvailabilityKeyFromText(sourceText = ''): AvailabilityKey {
+  const t = sourceText.toLowerCase();
+  if (/rare|jdm|nla|hard\s*to\s*find|collector/.test(t)) return 'rare_jdm_nla';
+  if (/discontinued|no\s*longer\s*available/.test(t)) return 'discontinued';
+  if (/backorder|backordered|3\+\s*months?/.test(t)) return 'backordered_3_plus';
+  if (/limited|small\s*batch|low\s*production/.test(t)) return 'limited_production';
+  return 'readily_available';
+}
+
+function resolveMarketplaceAvailability(
+  rarityProfile: MarketplaceRarityProfile,
+  sourceText: string
+): { key: AvailabilityKey; label: string; factor: number } {
+  const key: AvailabilityKey =
+    rarityProfile === 'auto' ? inferAvailabilityKeyFromText(sourceText) : rarityProfile;
+  const row = AVAILABILITY_FACTORS.find((x) => x.key === key) ?? AVAILABILITY_FACTORS[0]!;
+  return { key, label: row.label, factor: row.factor };
+}
+
+function availabilityLabelFromKey(key: AvailabilityKey | null | undefined) {
+  if (!key) return null;
+  const row = AVAILABILITY_FACTORS.find((x) => x.key === key);
+  return row?.label ?? null;
+}
+
+function estimateDealerAnchorForMarketplace(input: {
+  askPrice: number | null;
+  detectedPrice?: number | null;
+  category: Category;
+  condition: Condition;
+}) {
+  const baseByCategory: Record<Category, number> = {
+    Engine: 2200,
+    Suspension: 900,
+    Transmission: 1800,
+    Brakes: 850,
+    Rims: 950,
+    Tires: 700,
+    Exhaust: 780,
+    Chassis: 620,
+    Audio: 520
+  };
+  const baseline = input.askPrice ?? input.detectedPrice ?? baseByCategory[input.category];
+  const uplift = input.condition === 'Used' ? 1.45 : input.condition === 'Aftermarket' ? 1.2 : 1.05;
+  return Math.round(Math.max(baseline * uplift, baseByCategory[input.category] * 0.7));
 }
 
 function inferAgeBandForMarketplace(
@@ -465,18 +522,23 @@ function computeFmvFromInputs(
     sourceText?: string;
     partYear?: number | null;
     engineMiles?: number | null;
+    rarityProfile?: MarketplaceRarityProfile;
+    dealerOriginalPrice?: number | null;
   }
 ): MarketplaceSearchResult['valuation'] {
   const sourceText = options?.sourceText ?? '';
   const partYear = options?.partYear ?? null;
   const engineMiles = options?.engineMiles ?? null;
+  const rarityProfile = options?.rarityProfile ?? 'auto';
+  const dealerOriginalPrice = options?.dealerOriginalPrice ?? null;
   const partType: PartType = condition === 'Aftermarket' ? 'Performance' : 'OEM';
   const ageBand = inferAgeBandForMarketplace(condition, sourceText, partYear);
   const af = ageFactorFromBand(partType, ageBand);
   const baseConditionFactor = condition === 'New' ? 1 : condition === 'Aftermarket' ? 0.75 : 0.65;
   const milesFactor = engineMileageFactorForMarketplace(category, condition, engineMiles);
   const cf = Math.round(baseConditionFactor * milesFactor * 1000) / 1000;
-  const avf = 1.1;
+  const availability = resolveMarketplaceAvailability(rarityProfile, sourceText);
+  const avf = availability.factor;
   const demandMap: Record<Category, number> = {
     Engine: 1.1,
     Suspension: 1.0,
@@ -489,11 +551,13 @@ function computeFmvFromInputs(
     Audio: 0.95
   };
   const mdf = demandMap[category];
-  const fmv = Math.round(baseAnchor * af * cf * avf * mdf);
+  const anchor = Math.max(dealerOriginalPrice ?? baseAnchor, 50);
+  const fmv = Math.round(anchor * af * cf * avf * mdf);
+  const rangeSpread = avf >= 1.25 ? { low: 0.85, high: 1.22 } : { low: 0.88, high: 1.18 };
   const marketRange = {
-    low: Math.round(fmv * 0.88),
+    low: Math.round(fmv * rangeSpread.low),
     mid: fmv,
-    high: Math.round(fmv * 1.18)
+    high: Math.round(fmv * rangeSpread.high)
   };
   return {
     fairMarketValue: fmv,
@@ -504,7 +568,9 @@ function computeFmvFromInputs(
       ageFactor: af,
       conditionFactor: cf,
       availabilityFactor: avf,
-      marketDemandFactor: mdf
+      availabilityKey: availability.key,
+      marketDemandFactor: mdf,
+      dealerOriginalPrice: dealerOriginalPrice ?? null
     }
   };
 }
@@ -543,6 +609,7 @@ function compositeMarketplaceScore(input: {
   sellerTenureMonths: number;
   distanceMiles: number;
   sourceFetched: boolean;
+  dealerOriginalPrice?: number | null;
 }): number {
   const repNorm = clamp((input.reputationScore5 - 3.5) / 1.5, 0, 1);
   const tenureNorm = clamp(input.sellerTenureMonths / 24, 0, 1);
@@ -551,7 +618,13 @@ function compositeMarketplaceScore(input: {
     input.askPrice == null || input.fairMarketValue <= 0
       ? 0.62
       : clamp(1 - Math.abs(input.askPrice - input.fairMarketValue) / input.fairMarketValue, 0.2, 1);
-  const confidenceNorm = clamp((input.sourceFetched ? 0.8 : 0.55) + (input.askPrice != null ? 0.15 : 0), 0.35, 1);
+  const confidenceNorm = clamp(
+    (input.sourceFetched ? 0.8 : 0.55) +
+      (input.askPrice != null ? 0.15 : 0) +
+      (input.dealerOriginalPrice != null ? 0.1 : 0),
+    0.35,
+    1
+  );
   const weighted =
     repNorm * 0.2 +
     tenureNorm * 0.14 +
@@ -982,6 +1055,9 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
       locationText?: string | null;
       partYear?: number | null;
       engineMiles?: number | null;
+      rarityProfile?: AvailabilityKey | null;
+      dealerOriginalPrice?: number | null;
+      researchSource?: string | null;
     };
     valuation: {
       formula: {
@@ -989,7 +1065,9 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
         ageFactor: number;
         conditionFactor: number;
         availabilityFactor: number;
+        availabilityKey?: AvailabilityKey;
         marketDemandFactor: number;
+        dealerOriginalPrice?: number | null;
       };
       fairMarketValue: number;
       marketRange: { low: number; mid: number; high: number };
@@ -1033,31 +1111,44 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
     const parsedPartYear = parsePartYearInput(partYear);
     const parsedEngineMiles =
       selectedCategory === 'Engine' ? parseEngineMilesInput(engineMiles) : null;
+    const parsedAsk = parsePriceInput(askPrice);
+    const sourceText = `${partTitle.trim()} ${link.trim()}`;
+    const estimatedDealerOriginalPrice = estimateDealerAnchorForMarketplace({
+      askPrice: parsedAsk,
+      category: selectedCategory,
+      condition: selectedCondition
+    });
+    const autoAvailability = resolveMarketplaceAvailability('auto', sourceText);
 
     if (!HAS_API_BASE) {
-      const parsedAsk = Number(String(askPrice).replace(/[^0-9.]/g, ''));
-      const fallbackBase = Number.isFinite(parsedAsk) && parsedAsk > 0 ? parsedAsk : 450 + CATEGORIES.indexOf(selectedCategory) * 35;
+      const fallbackBase =
+        estimatedDealerOriginalPrice ??
+        parsedAsk ??
+        450 + CATEGORIES.indexOf(selectedCategory) * 35;
       const valuation = computeFmvFromInputs(
         fallbackBase,
         selectedCategory,
         selectedCondition,
         {
-          sourceText: `${partTitle.trim()} ${link.trim()}`,
+          sourceText,
           partYear: parsedPartYear,
-          engineMiles: parsedEngineMiles
+          engineMiles: parsedEngineMiles,
+          rarityProfile: 'auto',
+          dealerOriginalPrice: estimatedDealerOriginalPrice
         }
       );
       const sellerTenureMonths = 4 + (smallHash(link) % 72);
       const estimatedDistanceMiles = 10 + (smallHash(`${buyerZip}|${link}`) % 140);
       const partRating5 = 3.8 + (smallHash(`${selectedCategory}|${partTitle}`) % 11) / 10;
-      const normalizedAsk = Number.isFinite(parsedAsk) && parsedAsk > 0 ? parsedAsk : null;
+      const normalizedAsk = parsedAsk;
       const fallbackRawScore = compositeMarketplaceScore({
         askPrice: normalizedAsk,
         fairMarketValue: valuation.fairMarketValue,
         reputationScore5: partRating5,
         sellerTenureMonths,
         distanceMiles: estimatedDistanceMiles,
-        sourceFetched: false
+        sourceFetched: false,
+        dealerOriginalPrice: estimatedDealerOriginalPrice
       });
       const fallbackPriceSignal = classifyPriceSignalFromRange(normalizedAsk, valuation.marketRange);
       const fallbackScore = applyPriceDealPenalty({
@@ -1067,10 +1158,23 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
       });
       const fallbackRiskFlags = [
         'Live listing metadata unavailable on static-host mode.',
+        'Dealer price and rarity are estimated from local heuristics in static mode.',
         'Verify seller profile, photos, serial numbers, and fitment before payment.'
       ];
       if (fallbackPriceSignal === 'Over market') {
         fallbackRiskFlags.unshift('Ask price is above estimated FMV range. Negotiate or skip this listing.');
+      }
+      if (
+        normalizedAsk != null &&
+        estimatedDealerOriginalPrice != null &&
+        normalizedAsk > estimatedDealerOriginalPrice * 1.15
+      ) {
+        const rarityFactor = valuation.formula?.availabilityFactor ?? 1;
+        if (rarityFactor <= 1.1) {
+          fallbackRiskFlags.push('Ask exceeds dealer/original price without strong rarity support.');
+        } else {
+          fallbackRiskFlags.push('Ask exceeds dealer/original price; rarity may justify premium, verify condition.');
+        }
       }
       if (selectedCategory === 'Engine' && parsedEngineMiles == null) {
         fallbackRiskFlags.push('Add engine mileage from the listing to tighten FMV accuracy.');
@@ -1087,15 +1191,20 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           detectedPrice: null,
           locationText: null,
           partYear: parsedPartYear,
-          engineMiles: parsedEngineMiles
+          engineMiles: parsedEngineMiles,
+          rarityProfile: autoAvailability.key,
+          dealerOriginalPrice: estimatedDealerOriginalPrice,
+          researchSource: 'heuristic'
         },
         valuation: {
           formula: {
             baseAnchor: fallbackBase,
             ageFactor: valuation.formula?.ageFactor ?? 0.75,
             conditionFactor: valuation.formula?.conditionFactor ?? 0.65,
-            availabilityFactor: valuation.formula?.availabilityFactor ?? 1.1,
-            marketDemandFactor: valuation.formula?.marketDemandFactor ?? 1
+            availabilityFactor: valuation.formula?.availabilityFactor ?? 1,
+            availabilityKey: valuation.formula?.availabilityKey,
+            marketDemandFactor: valuation.formula?.marketDemandFactor ?? 1,
+            dealerOriginalPrice: valuation.formula?.dealerOriginalPrice ?? null
           },
           fairMarketValue: valuation.fairMarketValue,
           marketRange: valuation.marketRange,
@@ -1149,7 +1258,10 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           engineMiles:
             selectedCategory === 'Engine'
               ? (data.listing?.engineMiles ?? parsedEngineMiles ?? null)
-              : null
+              : null,
+          rarityProfile: data.listing?.rarityProfile ?? null,
+          dealerOriginalPrice: data.listing?.dealerOriginalPrice ?? estimatedDealerOriginalPrice ?? null,
+          researchSource: data.listing?.researchSource ?? null
         },
         valuation: {
           formula: {
@@ -1157,7 +1269,9 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
             ageFactor: data.valuation?.formula?.ageFactor ?? 0,
             conditionFactor: data.valuation?.formula?.conditionFactor ?? 0,
             availabilityFactor: data.valuation?.formula?.availabilityFactor ?? 0,
-            marketDemandFactor: data.valuation?.formula?.marketDemandFactor ?? 0
+            availabilityKey: data.valuation?.formula?.availabilityKey,
+            marketDemandFactor: data.valuation?.formula?.marketDemandFactor ?? 0,
+            dealerOriginalPrice: data.valuation?.formula?.dealerOriginalPrice ?? null
           },
           fairMarketValue: data.valuation?.fairMarketValue ?? 0,
           marketRange: data.valuation?.marketRange ?? { low: 0, mid: 0, high: 0 },
@@ -1268,7 +1382,8 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
               <div className="mt-1 text-xl font-black text-zinc-900">Verify a Facebook Marketplace listing before you buy</div>
               <div className="mt-2 text-sm text-zinc-600">
                 Paste a Facebook Marketplace listing URL, select condition/category, and AutoIndex will fetch listing
-                metadata (where permitted), estimate distance via geocoding, and rate fair market value from real signals.
+                metadata (where permitted), research rarity and dealer price references, estimate distance via geocoding,
+                and rate fair market value from real signals.
               </div>
             </div>
             <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-extrabold text-zinc-800">
@@ -1427,6 +1542,16 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                       Live listing metadata unavailable. AutoIndex used fallback valuation logic.
                     </div>
                   ) : null}
+                  {analysis.listing.researchSource === 'web' ? (
+                    <div className="mt-1 text-xs text-emerald-700">
+                      Rarity and dealer anchor were enriched from online research signals.
+                    </div>
+                  ) : null}
+                  {analysis.listing.researchSource === 'heuristic' ? (
+                    <div className="mt-1 text-xs text-amber-700">
+                      Rarity and dealer anchor used model heuristics due limited online match confidence.
+                    </div>
+                  ) : null}
                 </div>
                 <div className={`rounded-2xl border px-3 py-2 text-right ${label?.tone ?? 'border-zinc-200'}`}>
                   <div className="text-xs font-extrabold">Score</div>
@@ -1457,6 +1582,16 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                 {analysis.listing.locationText ? (
                   <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
                     <MapPin className="h-4 w-4" /> Listing area: {analysis.listing.locationText}
+                  </span>
+                ) : null}
+                {typeof analysis.listing.dealerOriginalPrice === 'number' ? (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                    <Tag className="h-4 w-4" /> Dealer/original: {fmtMoney(analysis.listing.dealerOriginalPrice)}
+                  </span>
+                ) : null}
+                {analysis.listing.rarityProfile ? (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                    <Sparkles className="h-4 w-4" /> Rarity: {availabilityLabelFromKey(analysis.listing.rarityProfile)}
                   </span>
                 ) : null}
                 {typeof analysis.listing.partYear === 'number' ? (

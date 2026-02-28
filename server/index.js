@@ -50,6 +50,14 @@ const BRAND_REPUTATION = {
   'bc racing': { score: 4.5, verifiedSignals: 880 }
 };
 
+const RARITY_FACTOR_TABLE = {
+  readily_available: { factor: 1.0, label: 'Readily Available Everywhere' },
+  limited_production: { factor: 1.1, label: 'Limited Production' },
+  backordered_3_plus: { factor: 1.15, label: 'Backordered 3+ Months' },
+  discontinued: { factor: 1.25, label: 'Discontinued' },
+  rare_jdm_nla: { factor: 1.4, label: 'Rare / JDM / NLA' }
+};
+
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
@@ -111,6 +119,10 @@ function parseEngineMilesInput(raw) {
   return miles;
 }
 
+function parseDealerPriceInput(raw) {
+  return parsePrice(raw);
+}
+
 function normalizeBrand(title) {
   if (!title) return 'oem';
   const t = title.toLowerCase();
@@ -135,8 +147,122 @@ function conditionFactor(condition) {
   return 0.65;
 }
 
-function availabilityFactor(isMarketplaceLink) {
-  return isMarketplaceLink ? 1.1 : 1.0;
+function normalizeRarityProfile(raw) {
+  if (raw == null) return 'auto';
+  const normalized = String(raw).trim().toLowerCase().replace(/[\s/-]+/g, '_');
+  if (normalized in RARITY_FACTOR_TABLE) return normalized;
+  return 'auto';
+}
+
+function inferRarityProfileFromText(sourceText = '') {
+  const t = String(sourceText).toLowerCase();
+  if (/rare|jdm|nla|hard\s*to\s*find|collector/.test(t)) return 'rare_jdm_nla';
+  if (/discontinued|no\s*longer\s*available/.test(t)) return 'discontinued';
+  if (/backorder|backordered|3\+\s*months?/.test(t)) return 'backordered_3_plus';
+  if (/limited|small\s*batch|low\s*production/.test(t)) return 'limited_production';
+  return 'readily_available';
+}
+
+function htmlToText(html) {
+  return String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function median(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) return Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+  return sorted[mid];
+}
+
+function estimateDealerAnchorHeuristic({ askPrice, detectedPrice, category, condition }) {
+  const baseByCategory = {
+    Engine: 2200,
+    Suspension: 900,
+    Transmission: 1800,
+    Brakes: 850,
+    Rims: 950,
+    Tires: 700,
+    Exhaust: 780,
+    Chassis: 620,
+    Audio: 520
+  };
+  const baseline = askPrice ?? detectedPrice ?? baseByCategory[category] ?? 800;
+  const uplift = condition === 'Used' ? 1.45 : condition === 'Aftermarket' ? 1.2 : 1.05;
+  return Math.round(Math.max(baseline * uplift, (baseByCategory[category] ?? 800) * 0.7));
+}
+
+async function researchDealerAnchorAndRarity({
+  title,
+  category,
+  condition,
+  askPrice,
+  detectedPrice
+}) {
+  let rarityProfile = inferRarityProfileFromText(title);
+  let dealerOriginalPrice = null;
+  let source = 'heuristic';
+
+  try {
+    const q = encodeURIComponent(`${title} ${category} OEM dealer MSRP price`);
+    const res = await fetchWithTimeout(`https://duckduckgo.com/html/?q=${q}`, {
+      headers: {
+        'User-Agent': 'AutoIndexBot/1.0 (+https://autoindex.local)'
+      }
+    }, 5000);
+    if (res.ok) {
+      const html = await res.text();
+      const text = htmlToText(html);
+      const rarityFromSearch = inferRarityProfileFromText(`${title} ${text}`);
+      if (rarityFromSearch) rarityProfile = rarityFromSearch;
+
+      const prices = Array.from(text.matchAll(/\$\s*([0-9]{2,5}(?:\.[0-9]{1,2})?)/g))
+        .map((m) => Number(m[1]))
+        .filter((n) => Number.isFinite(n) && n >= 50 && n <= 20000);
+      const filtered = prices.filter((n) => askPrice == null || n >= askPrice * 0.6);
+      const med = median(filtered.length ? filtered : prices);
+      if (med != null) {
+        dealerOriginalPrice = med;
+        source = 'web';
+      }
+    }
+  } catch {
+    // fall through to heuristic
+  }
+
+  if (dealerOriginalPrice == null) {
+    dealerOriginalPrice = estimateDealerAnchorHeuristic({
+      askPrice,
+      detectedPrice,
+      category,
+      condition
+    });
+  }
+
+  return {
+    dealerOriginalPrice,
+    rarityProfile,
+    source
+  };
+}
+
+function availabilityFactor({ rarityProfile = 'auto', sourceText = '', isMarketplaceLink = false }) {
+  const normalized = normalizeRarityProfile(rarityProfile);
+  const key =
+    normalized === 'auto' ? inferRarityProfileFromText(sourceText) : normalized;
+  const row = RARITY_FACTOR_TABLE[key] || RARITY_FACTOR_TABLE.readily_available;
+  return {
+    key,
+    factor: row.factor,
+    label: row.label,
+    inferred: normalized === 'auto',
+    isMarketplaceLink
+  };
 }
 
 function engineMileageFactor(category, condition, engineMiles) {
@@ -220,12 +346,19 @@ function priceFitNorm(price, marketRangeMid) {
   return clamp(1 - delta, 0.2, 1);
 }
 
-function valuationConfidenceNorm({ sourceFetched, hasPrice, hasTitle, hasBuyerGeo }) {
+function valuationConfidenceNorm({
+  sourceFetched,
+  hasPrice,
+  hasTitle,
+  hasBuyerGeo,
+  hasDealerAnchor = false
+}) {
   let score = 0.55;
   if (sourceFetched) score += 0.2;
   if (hasPrice) score += 0.15;
   if (hasTitle) score += 0.05;
   if (hasBuyerGeo) score += 0.05;
+  if (hasDealerAnchor) score += 0.1;
   return clamp(score, 0.35, 1);
 }
 
@@ -254,6 +387,8 @@ function scoreMarketListing({
   price,
   partYear,
   engineMiles,
+  rarityProfile,
+  dealerOriginalPrice,
   isMarketplaceSource,
   distanceMiles,
   sellerTenureMonths,
@@ -264,18 +399,25 @@ function scoreMarketListing({
   const rep = BRAND_REPUTATION[brandKey] ?? BRAND_REPUTATION.oem;
   const inferredPartType = condition === 'Aftermarket' ? 'Performance' : 'OEM';
   const normalizedEngineMiles = parseEngineMilesInput(engineMiles);
+  const normalizedDealerPrice = parseDealerPriceInput(dealerOriginalPrice);
+  const availability = availabilityFactor({
+    rarityProfile,
+    sourceText: title,
+    isMarketplaceLink: isMarketplaceSource
+  });
   const af = ageFactor(inferredPartType, inferAgeBand(title, condition, partYear));
   const cf = Math.round(
     conditionFactor(condition) * engineMileageFactor(category, condition, normalizedEngineMiles) * 1000
   ) / 1000;
-  const avf = availabilityFactor(isMarketplaceSource);
+  const avf = availability.factor;
   const mdf = demandFactor(category);
-  const baseAnchor = Math.max(price ?? 300, 50);
+  const baseAnchor = Math.max(normalizedDealerPrice ?? price ?? 300, 50);
   const fmv = Math.round(baseAnchor * af * cf * avf * mdf);
+  const spread = avf >= 1.25 ? { low: 0.85, high: 1.22 } : { low: 0.88, high: 1.18 };
   const marketRange = {
-    low: Math.round(fmv * 0.88),
+    low: Math.round(fmv * spread.low),
     mid: fmv,
-    high: Math.round(fmv * 1.18)
+    high: Math.round(fmv * spread.high)
   };
   const priceSignal = classifyPriceSignal(price, marketRange);
   const repScoreNorm = clamp((rep.score - 3.5) / 1.5, 0, 1);
@@ -287,7 +429,8 @@ function scoreMarketListing({
     sourceFetched,
     hasPrice: price != null,
     hasTitle: Boolean(title),
-    hasBuyerGeo
+    hasBuyerGeo,
+    hasDealerAnchor: normalizedDealerPrice != null
   });
   const rawScore10 = compositeScore10({
     repScoreNorm,
@@ -308,6 +451,13 @@ function scoreMarketListing({
     riskFlags.push('Ask price deviates significantly from FMV estimate.');
   }
   if (condition === 'Used') riskFlags.push('Used part: request serials, photos, and fitment proof.');
+  if (price != null && normalizedDealerPrice != null && price > normalizedDealerPrice * 1.15) {
+    if (avf <= 1.1) {
+      riskFlags.push('Ask price is above original dealer/MSRP without strong rarity support.');
+    } else {
+      riskFlags.push('Ask price exceeds original dealer/MSRP; rarity may justify premium, verify details.');
+    }
+  }
   if (category === 'Engine' && normalizedEngineMiles == null) {
     riskFlags.push('Engine mileage missing; provide miles for tighter valuation confidence.');
   }
@@ -323,7 +473,9 @@ function scoreMarketListing({
         ageFactor: af,
         conditionFactor: cf,
         availabilityFactor: avf,
-        marketDemandFactor: mdf
+        availabilityKey: availability.key,
+        marketDemandFactor: mdf,
+        dealerOriginalPrice: normalizedDealerPrice
       },
       marketRange,
       fairMarketValue: marketRange.mid,
@@ -682,6 +834,14 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
   const meta = await fetchListingMetadata(url.trim());
 
   const resolvedTitle = (partTitle && String(partTitle).trim()) || meta.title || 'Unknown part';
+  const enrichment = await researchDealerAnchorAndRarity({
+    title: resolvedTitle,
+    category,
+    condition,
+    askPrice: ask,
+    detectedPrice: meta.price
+  });
+  const normalizedDealerPrice = parseDealerPriceInput(enrichment.dealerOriginalPrice);
   const brandKey = normalizeBrand(resolvedTitle);
   const rep = BRAND_REPUTATION[brandKey] ?? BRAND_REPUTATION.oem;
 
@@ -695,15 +855,21 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
       engineMileageFactor(category, condition, normalizedEngineMiles) *
       1000
   ) / 1000;
-  const avf = availabilityFactor(meta.platform === 'Facebook Marketplace');
+  const availability = availabilityFactor({
+    rarityProfile: enrichment.rarityProfile,
+    sourceText: resolvedTitle,
+    isMarketplaceLink: meta.platform === 'Facebook Marketplace'
+  });
+  const avf = availability.factor;
   const mdf = demandFactor(category);
 
-  const baseAnchor = Math.max(meta.price ?? ask ?? 300, 50);
+  const baseAnchor = Math.max(normalizedDealerPrice ?? meta.price ?? ask ?? 300, 50);
   const fmv = Math.round(baseAnchor * af * cf * avf * mdf);
+  const spread = avf >= 1.25 ? { low: 0.85, high: 1.22 } : { low: 0.88, high: 1.18 };
   const marketRange = {
-    low: Math.round(fmv * 0.88),
+    low: Math.round(fmv * spread.low),
     mid: fmv,
-    high: Math.round(fmv * 1.18)
+    high: Math.round(fmv * spread.high)
   };
 
   let priceSignal = 'At market';
@@ -724,6 +890,9 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
   const riskFlags = [];
   if (meta.platform !== 'Facebook Marketplace') riskFlags.push('URL does not resolve as Facebook Marketplace.');
   if (!meta.sourceFetched) riskFlags.push('Live metadata could not be fetched (privacy/auth/rate limit).');
+  if (enrichment.source !== 'web') {
+    riskFlags.push('Dealer price/rarity used heuristic research due limited web signal coverage.');
+  }
   if (sellerTenureMonths < 6) riskFlags.push('Seller presence appears relatively new.');
   if (distance > 90) riskFlags.push('Long pickup distance increases risk and friction.');
   if (priceSignal === 'Under market') riskFlags.push('Price is below market; verify authenticity and condition.');
@@ -732,6 +901,13 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
     riskFlags.push('Ask price deviates significantly from FMV estimate.');
   }
   if (condition === 'Used') riskFlags.push('Used part: request serials, photos, and fitment proof.');
+  if (comparedAsk != null && normalizedDealerPrice != null && comparedAsk > normalizedDealerPrice * 1.15) {
+    if (avf <= 1.1) {
+      riskFlags.push('Ask price is above original dealer/MSRP without strong rarity support.');
+    } else {
+      riskFlags.push('Ask price exceeds original dealer/MSRP; rarity may justify premium, verify details.');
+    }
+  }
   if (category === 'Engine' && normalizedEngineMiles == null) {
     riskFlags.push('Engine mileage missing; provide miles for tighter valuation confidence.');
   }
@@ -749,7 +925,8 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
     sourceFetched: meta.sourceFetched,
     hasPrice: comparedAsk != null,
     hasTitle: Boolean(resolvedTitle && resolvedTitle !== 'Unknown part'),
-    hasBuyerGeo: Boolean(buyerGeo)
+    hasBuyerGeo: Boolean(buyerGeo),
+    hasDealerAnchor: normalizedDealerPrice != null
   });
   const rawScore10 = compositeScore10({
     repScoreNorm,
@@ -772,6 +949,9 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
       locationText: meta.locationText,
       partYear: normalizedPartYear,
       engineMiles: normalizedEngineMiles,
+      rarityProfile: availability.key,
+      dealerOriginalPrice: normalizedDealerPrice,
+      researchSource: enrichment.source,
       condition,
       category
     },
@@ -781,7 +961,9 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
         ageFactor: af,
         conditionFactor: cf,
         availabilityFactor: avf,
-        marketDemandFactor: mdf
+        availabilityKey: availability.key,
+        marketDemandFactor: mdf,
+        dealerOriginalPrice: normalizedDealerPrice
       },
       marketRange,
       fairMarketValue: marketRange.mid,
