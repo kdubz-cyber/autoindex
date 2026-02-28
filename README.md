@@ -4,6 +4,11 @@ AutoIndex full-stack app with React + TypeScript frontend and Node/Express auth 
 
 ## Features
 
+- New guided flow: `Select Part -> Paste Link -> Analyse -> Results`
+- Mobile-first stepper UI for Marketplace Analysis
+- Privacy (`/privacy`) and Terms (`/terms`) pages
+- Embed mode for Wix iframes via `?embed=1`
+- Legacy full workspace preserved at `/workspace`
 - F.P.V (Fair Parts Valuation Formula) valuation workflow
 - Multi-vendor marketplace with filtering and sorting
 - Individual and vendor listing flows
@@ -80,6 +85,8 @@ Open the local URL shown by Vite (typically `http://localhost:5173`).
 npm run build
 npm run preview
 ```
+
+For deployment modes (GitHub Pages base path, root domain, Wix embed), see `README_DEPLOY.md`.
 
 ## Deployment note
 
