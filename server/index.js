@@ -111,7 +111,7 @@ function ageFactor(partType, ageBand) {
 
 function conditionFactor(condition) {
   if (condition === 'New') return 1.0;
-  if (condition === 'Aftermarket') return 0.7;
+  if (condition === 'Aftermarket') return 0.75;
   return 0.65;
 }
 
@@ -134,12 +134,18 @@ function demandFactor(category) {
   return map[category] ?? 1.0;
 }
 
-function inferAgeBand(title = '') {
-  const t = title.toLowerCase();
-  if (t.includes('new')) return 'new_0_1';
-  if (t.includes('v2') || t.includes('202')) return 'years_1_3';
-  if (t.includes('201') || t.includes('2015')) return 'years_3_7';
-  if (t.includes('200')) return 'years_7_15';
+function inferAgeBand(title = '', condition = 'Used') {
+  const t = String(title).toLowerCase();
+  if (condition === 'New' || /brand\s*new|new\b|bnib|sealed|unused/.test(t)) return 'new_0_1';
+  if (/15\+\s*(years?|yrs?)|15\s*plus|vintage|classic|nla|discontinued/.test(t)) return 'years_15_plus';
+  if (/7\s*(?:-|to)\s*15\s*(years?|yrs?)/.test(t)) return 'years_7_15';
+  if (/3\s*(?:-|to)\s*7\s*(years?|yrs?)/.test(t)) return 'years_3_7';
+  if (/1\s*(?:-|to)\s*3\s*(years?|yrs?)/.test(t)) return 'years_1_3';
+  if (/\b([89]|1[0-5])\s*(years?|yrs?)\s*old\b/.test(t)) return 'years_7_15';
+  if (/\b([4-7])\s*(years?|yrs?)\s*old\b/.test(t)) return 'years_3_7';
+  if (/\b([1-3])\s*(years?|yrs?)\s*old\b/.test(t)) return 'years_1_3';
+  if (condition === 'Aftermarket') return 'years_1_3';
+  if (condition === 'Used') return 'years_7_15';
   return 'years_3_7';
 }
 
@@ -215,7 +221,7 @@ function scoreMarketListing({
   const brandKey = normalizeBrand(title);
   const rep = BRAND_REPUTATION[brandKey] ?? BRAND_REPUTATION.oem;
   const inferredPartType = condition === 'Aftermarket' ? 'Performance' : 'OEM';
-  const af = ageFactor(inferredPartType, inferAgeBand(title));
+  const af = ageFactor(inferredPartType, inferAgeBand(title, condition));
   const cf = conditionFactor(condition);
   const avf = availabilityFactor(isMarketplaceSource);
   const mdf = demandFactor(category);
@@ -617,7 +623,7 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
   const rep = BRAND_REPUTATION[brandKey] ?? BRAND_REPUTATION.oem;
 
   const inferredPartType = condition === 'Aftermarket' ? 'Performance' : 'OEM';
-  const af = ageFactor(inferredPartType, inferAgeBand(resolvedTitle));
+  const af = ageFactor(inferredPartType, inferAgeBand(resolvedTitle, condition));
   const cf = conditionFactor(condition);
   const avf = availabilityFactor(meta.platform === 'Facebook Marketplace');
   const mdf = demandFactor(category);

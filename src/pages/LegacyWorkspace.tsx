@@ -370,6 +370,13 @@ type MarketplaceSearchResult = {
     fairMarketValue: number;
     marketRange: { low: number; mid: number; high: number };
     priceSignal: string;
+    formula?: {
+      ageBand: AgeBandKey;
+      ageFactor: number;
+      conditionFactor: number;
+      availabilityFactor: number;
+      marketDemandFactor: number;
+    };
   };
   intelligence: {
     score10: number;
@@ -379,12 +386,35 @@ type MarketplaceSearchResult = {
   };
 };
 
+function inferAgeBandForMarketplace(condition: Condition, sourceText = ''): AgeBandKey {
+  const t = sourceText.toLowerCase();
+  if (condition === 'New' || /brand\s*new|new\b|bnib|sealed|unused/.test(t)) return 'new_0_1';
+  if (/15\+\s*(years?|yrs?)|15\s*plus|vintage|classic|nla|discontinued/.test(t)) return 'years_15_plus';
+  if (/7\s*(?:-|to)\s*15\s*(years?|yrs?)/.test(t)) return 'years_7_15';
+  if (/3\s*(?:-|to)\s*7\s*(years?|yrs?)/.test(t)) return 'years_3_7';
+  if (/1\s*(?:-|to)\s*3\s*(years?|yrs?)/.test(t)) return 'years_1_3';
+  if (/\b([89]|1[0-5])\s*(years?|yrs?)\s*old\b/.test(t)) return 'years_7_15';
+  if (/\b([4-7])\s*(years?|yrs?)\s*old\b/.test(t)) return 'years_3_7';
+  if (/\b([1-3])\s*(years?|yrs?)\s*old\b/.test(t)) return 'years_1_3';
+  if (condition === 'Aftermarket') return 'years_1_3';
+  if (condition === 'Used') return 'years_7_15';
+  return 'years_3_7';
+}
+
+function ageFactorFromBand(partType: PartType, ageBand: AgeBandKey) {
+  const row = AGE_FACTORS.find((x) => x.key === ageBand) ?? AGE_FACTORS[2]!;
+  return partType === 'OEM' ? row.oem : row.performance;
+}
+
 function computeFmvFromInputs(
   baseAnchor: number,
   category: Category,
-  condition: Condition
+  condition: Condition,
+  sourceText = ''
 ): MarketplaceSearchResult['valuation'] {
-  const af = condition === 'New' ? 0.95 : condition === 'Aftermarket' ? 0.8 : 0.7;
+  const partType: PartType = condition === 'Aftermarket' ? 'Performance' : 'OEM';
+  const ageBand = inferAgeBandForMarketplace(condition, sourceText);
+  const af = ageFactorFromBand(partType, ageBand);
   const cf = condition === 'New' ? 1 : condition === 'Aftermarket' ? 0.75 : 0.65;
   const avf = 1.1;
   const demandMap: Record<Category, number> = {
@@ -408,7 +438,14 @@ function computeFmvFromInputs(
   return {
     fairMarketValue: fmv,
     marketRange,
-    priceSignal: 'At market'
+    priceSignal: 'At market',
+    formula: {
+      ageBand,
+      ageFactor: af,
+      conditionFactor: cf,
+      availabilityFactor: avf,
+      marketDemandFactor: mdf
+    }
   };
 }
 
@@ -489,7 +526,7 @@ function toFallbackSearchResults(input: {
   const pool = (filtered.length ? filtered : MOCK_LISTINGS.filter((l) => l.category === input.category)).slice(0, 8);
 
   return pool.map((l) => {
-    const valuation = computeFmvFromInputs(l.msrp || l.price, l.category, l.condition);
+    const valuation = computeFmvFromInputs(l.msrp || l.price, l.category, l.condition, `${l.title} ${l.fitment}`);
     const sellerTenureMonths = 6 + (smallHash(`${l.id}-tenure`) % 60);
     const estimatedDistanceMiles = 15 + (smallHash(l.id) % 120);
     const rawScore = compositeMarketplaceScore({
@@ -930,23 +967,15 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
     if (!HAS_API_BASE) {
       const parsedAsk = Number(String(askPrice).replace(/[^0-9.]/g, ''));
       const fallbackBase = Number.isFinite(parsedAsk) && parsedAsk > 0 ? parsedAsk : 450 + CATEGORIES.indexOf(selectedCategory) * 35;
-      const valuation = computeFmvFromInputs(fallbackBase, selectedCategory, selectedCondition);
+      const valuation = computeFmvFromInputs(
+        fallbackBase,
+        selectedCategory,
+        selectedCondition,
+        `${partTitle.trim()} ${link.trim()}`
+      );
       const sellerTenureMonths = 4 + (smallHash(link) % 72);
       const estimatedDistanceMiles = 10 + (smallHash(`${buyerZip}|${link}`) % 140);
       const partRating5 = 3.8 + (smallHash(`${selectedCategory}|${partTitle}`) % 11) / 10;
-      const formulaAgeFactor = selectedCondition === 'New' ? 0.95 : selectedCondition === 'Aftermarket' ? 0.8 : 0.7;
-      const formulaConditionFactor = selectedCondition === 'New' ? 1 : selectedCondition === 'Aftermarket' ? 0.75 : 0.65;
-      const demandMap: Record<Category, number> = {
-        Engine: 1.1,
-        Suspension: 1.0,
-        Transmission: 1.05,
-        Brakes: 1.1,
-        Rims: 1.05,
-        Tires: 1.0,
-        Exhaust: 1.05,
-        Chassis: 1.0,
-        Audio: 0.95
-      };
       const normalizedAsk = Number.isFinite(parsedAsk) && parsedAsk > 0 ? parsedAsk : null;
       const fallbackRawScore = compositeMarketplaceScore({
         askPrice: normalizedAsk,
@@ -981,10 +1010,10 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
         valuation: {
           formula: {
             baseAnchor: fallbackBase,
-            ageFactor: formulaAgeFactor,
-            conditionFactor: formulaConditionFactor,
-            availabilityFactor: 1.1,
-            marketDemandFactor: demandMap[selectedCategory]
+            ageFactor: valuation.formula?.ageFactor ?? 0.75,
+            conditionFactor: valuation.formula?.conditionFactor ?? 0.65,
+            availabilityFactor: valuation.formula?.availabilityFactor ?? 1.1,
+            marketDemandFactor: valuation.formula?.marketDemandFactor ?? 1
           },
           fairMarketValue: valuation.fairMarketValue,
           marketRange: valuation.marketRange,
