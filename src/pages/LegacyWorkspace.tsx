@@ -1147,7 +1147,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="text-xs font-bold text-zinc-500">Marketplace Analysis</div>
-              <div className="mt-1 text-xl font-black text-zinc-900">Analyse a Facebook Marketplace listing before you buy</div>
+              <div className="mt-1 text-xl font-black text-zinc-900">Verify a Facebook Marketplace listing before you buy</div>
               <div className="mt-2 text-sm text-zinc-600">
                 Paste a Facebook Marketplace listing URL, select condition/category, and AutoIndex will fetch listing
                 metadata (where permitted), estimate distance via geocoding, and rate fair market value from real signals.
