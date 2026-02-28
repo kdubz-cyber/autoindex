@@ -2465,8 +2465,8 @@ export default function App() {
                   <SectionImage kind="hero" />
                 </div>
                 <div className="p-5">
-                  <div className="text-xs font-bold text-zinc-500">F.P.V model</div>
-                  <div className="mt-1 text-xl font-black">Fair Parts Valuation Formula</div>
+                  <div className="text-xs font-bold text-zinc-500">Valuation</div>
+                  <div className="mt-1 text-xl font-black">Price a part like a pro</div>
                   <div className="mt-2 text-sm text-zinc-600">
                     Build fair market value using part age, condition, availability, and market demand signals.
                   </div>
