@@ -1312,23 +1312,6 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                   </span>
                 ) : null}
               </div>
-              <div className="mt-3 rounded-2xl border border-zinc-200 bg-white p-3">
-                <div className="text-xs font-bold text-zinc-500">Valuation formula breakdown</div>
-                <div className="mt-1 font-mono text-sm text-zinc-700">
-                  FMV = (Age Factor) × (Condition of the part) × (Availability of the part) ×
-                  (Market demand for that part)
-                </div>
-                <div className="mt-1 font-mono text-sm text-zinc-700">
-                  FMV = {analysis.valuation.formula.ageFactor.toFixed(2)} ×{' '}
-                  {analysis.valuation.formula.conditionFactor.toFixed(2)} ×{' '}
-                  {analysis.valuation.formula.availabilityFactor.toFixed(2)} ×{' '}
-                  {analysis.valuation.formula.marketDemandFactor.toFixed(2)}
-                </div>
-                <div className="mt-1 text-sm font-black text-zinc-900">
-                  Fair Market Value: {fmtMoney(analysis.valuation.fairMarketValue)}
-                </div>
-              </div>
-
               <div className="mt-4">
                 <div className="text-xs font-black text-zinc-900">Risk and verification checklist</div>
                 <ul className="mt-2 space-y-2">
