@@ -1320,7 +1320,11 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
               <div className="mt-3 rounded-2xl border border-zinc-200 bg-white p-3">
                 <div className="text-xs font-bold text-zinc-500">Valuation formula breakdown</div>
                 <div className="mt-1 font-mono text-sm text-zinc-700">
-                  FMV = {analysis.valuation.formula.baseAnchor} × {analysis.valuation.formula.ageFactor.toFixed(2)} ×{' '}
+                  FMV = (Age Factor) × (Condition of the part) × (Availability of the part) ×
+                  (Market demand for that part)
+                </div>
+                <div className="mt-1 font-mono text-sm text-zinc-700">
+                  FMV = {analysis.valuation.formula.ageFactor.toFixed(2)} ×{' '}
                   {analysis.valuation.formula.conditionFactor.toFixed(2)} ×{' '}
                   {analysis.valuation.formula.availabilityFactor.toFixed(2)} ×{' '}
                   {analysis.valuation.formula.marketDemandFactor.toFixed(2)}
@@ -2464,8 +2468,7 @@ export default function App() {
                   <div className="text-xs font-bold text-zinc-500">F.P.V model</div>
                   <div className="mt-1 text-xl font-black">Fair Parts Valuation Formula</div>
                   <div className="mt-2 text-sm text-zinc-600">
-                    FMV = B × AF × CF × AVF × MDF. Start with a base MSRP anchor, then apply age, condition,
-                    availability, and demand factors.
+                    Build fair market value using part age, condition, availability, and market demand signals.
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-3">
@@ -2614,17 +2617,6 @@ export default function App() {
                         {vehicleYear} {vehicleMake} {vehicleModel} • {zip}
                       </div>
                     </div>
-                    <div className="mt-2 rounded-2xl border border-zinc-200 bg-white p-3 text-sm text-zinc-700">
-                      <div className="font-black text-zinc-900">Final formula</div>
-                      <div className="mt-1 font-mono">
-                        FMV = B × AF × CF × AVF × MDF
-                      </div>
-                      <div className="mt-1 font-mono text-zinc-800">
-                        FMV = {fpvCalc.baseAnchor || 0} × {fpvCalc.ageFactor.toFixed(2)} ×{' '}
-                        {fpvCalc.conditionRow.factor.toFixed(2)} × {fpvCalc.availabilityRow.factor.toFixed(2)} ×{' '}
-                        {fpvCalc.demandRow.factor.toFixed(2)}
-                      </div>
-                    </div>
                     <div className="mt-3 grid grid-cols-3 gap-2">
                       <div className="rounded-2xl border border-zinc-200 bg-white p-3">
                         <div className="text-xs font-bold text-zinc-500">Low</div>
@@ -2735,14 +2727,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
-                      <div className="font-black text-zinc-900">Real world example</div>
-                      <div className="mt-2">1991 Civic Si Rear Bumper (OEM, discontinued)</div>
-                      <div className="mt-1 font-mono text-[13px]">
-                        FMV = 450 × 0.60 × 0.75 × 1.25 × 1.10 = {fmtMoney(278)}
-                      </div>
-                      <div className="mt-1 font-semibold text-zinc-900">Rounded fair range: {fmtMoney(275)}–{fmtMoney(325)}</div>
-                    </div>
                   </div>
 
                   {valuations.length > 0 ? (
@@ -2768,13 +2752,6 @@ export default function App() {
                             <div className="mt-1 text-xs text-zinc-600">
                               {String(v.category)} • {String(v.condition)}
                             </div>
-                            {v.formula ? (
-                              <div className="mt-1 text-[11px] text-zinc-600">
-                                FMV = {v.formula.baseAnchor} × {v.formula.ageFactor.toFixed(2)} ×{' '}
-                                {v.formula.conditionFactor.toFixed(2)} × {v.formula.availabilityFactor.toFixed(2)} ×{' '}
-                                {v.formula.marketDemandFactor.toFixed(2)}
-                              </div>
-                            ) : null}
                             <div className="mt-2 grid grid-cols-3 gap-2">
                               <div className="rounded-xl border border-zinc-200 bg-white p-2">
                                 <div className="text-[11px] font-bold text-zinc-500">Low</div>
