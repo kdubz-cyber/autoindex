@@ -46,11 +46,6 @@ type Category = (typeof CATEGORIES)[number];
 type Condition = 'New' | 'Used' | 'Aftermarket';
 type ListingCondition = Condition;
 type PartType = 'OEM' | 'Performance';
-type AnchorSource =
-  | 'Current dealer MSRP'
-  | 'Current manufacturer retail'
-  | 'Last known MSRP (discontinued)'
-  | 'Average of last 3 sold comps';
 type AgeBandKey = 'new_0_1' | 'years_1_3' | 'years_3_7' | 'years_7_15' | 'years_15_plus';
 type ConditionGradeKey = 'brand_new' | 'excellent_used' | 'good_used' | 'fair_used' | 'rough_used';
 type AvailabilityKey =
@@ -1493,13 +1488,12 @@ export default function App() {
   const [vehicleMake, setVehicleMake] = useState('Subaru');
   const [vehicleModel, setVehicleModel] = useState('WRX');
   const [zip, setZip] = useState('06770');
-  const [partType, setPartType] = useState<PartType>('OEM');
-  const [anchorSource, setAnchorSource] = useState<AnchorSource>('Current dealer MSRP');
-  const [baseAnchor, setBaseAnchor] = useState('450');
-  const [ageBand, setAgeBand] = useState<AgeBandKey>('years_15_plus');
-  const [conditionGrade, setConditionGrade] = useState<ConditionGradeKey>('excellent_used');
-  const [availabilityLevel, setAvailabilityLevel] = useState<AvailabilityKey>('discontinued');
-  const [demandLevel, setDemandLevel] = useState<DemandKey>('high');
+  const [partType] = useState<PartType>('OEM');
+  const [baseAnchor] = useState('450');
+  const [ageBand] = useState<AgeBandKey>('years_15_plus');
+  const [conditionGrade] = useState<ConditionGradeKey>('excellent_used');
+  const [availabilityLevel] = useState<AvailabilityKey>('discontinued');
+  const [demandLevel] = useState<DemandKey>('high');
 
   const [saved, setSaved] = useLocalStorageState<string[]>('autoindex_saved_items', []);
   const [cart, setCart] = useLocalStorageState<string[]>('autoindex_cart_items', []);
@@ -1831,7 +1825,7 @@ export default function App() {
       },
       ...v
     ]);
-    toast('F.P.V valuation saved');
+    toast('Valuation saved');
   };
 
   const createIndividualListing = () => {
@@ -2520,99 +2514,23 @@ export default function App() {
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-zinc-600">Part type</label>
+                      <label className="text-xs font-bold text-zinc-600">Condition</label>
                       <select
-                        value={partType}
-                        onChange={(e) => setPartType(e.target.value as PartType)}
+                        value={condition}
+                        onChange={(e) => setCondition(e.target.value as Condition | 'All')}
                         className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
                       >
-                        <option value="OEM">OEM</option>
-                        <option value="Performance">Performance / Aftermarket</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600">Base MSRP anchor (B)</label>
-                      <input
-                        value={baseAnchor}
-                        onChange={(e) => setBaseAnchor(e.target.value)}
-                        className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
-                        placeholder="$450"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600">Base anchor source</label>
-                      <select
-                        value={anchorSource}
-                        onChange={(e) => setAnchorSource(e.target.value as AnchorSource)}
-                        className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
-                      >
-                        <option>Current dealer MSRP</option>
-                        <option>Current manufacturer retail</option>
-                        <option>Last known MSRP (discontinued)</option>
-                        <option>Average of last 3 sold comps</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600">Age factor (AF)</label>
-                      <select
-                        value={ageBand}
-                        onChange={(e) => setAgeBand(e.target.value as AgeBandKey)}
-                        className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
-                      >
-                        {AGE_FACTORS.map((row) => (
-                          <option key={row.key} value={row.key}>
-                            {row.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600">Condition factor (CF)</label>
-                      <select
-                        value={conditionGrade}
-                        onChange={(e) => setConditionGrade(e.target.value as ConditionGradeKey)}
-                        className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
-                      >
-                        {CONDITION_FACTORS.map((row) => (
-                          <option key={row.key} value={row.key}>
-                            {row.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600">Availability factor (AVF)</label>
-                      <select
-                        value={availabilityLevel}
-                        onChange={(e) => setAvailabilityLevel(e.target.value as AvailabilityKey)}
-                        className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
-                      >
-                        {AVAILABILITY_FACTORS.map((row) => (
-                          <option key={row.key} value={row.key}>
-                            {row.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600">Market demand factor (MDF)</label>
-                      <select
-                        value={demandLevel}
-                        onChange={(e) => setDemandLevel(e.target.value as DemandKey)}
-                        className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
-                      >
-                        {MARKET_DEMAND_FACTORS.map((row) => (
-                          <option key={row.key} value={row.key}>
-                            {row.label}
-                          </option>
-                        ))}
+                        <option value="All">All</option>
+                        <option value="New">New</option>
+                        <option value="Used">Used</option>
+                        <option value="Aftermarket">Aftermarket</option>
                       </select>
                     </div>
                   </div>
 
                   <div className="mt-4 rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-extrabold">F.P.V fair market value output</div>
+                      <div className="text-sm font-extrabold">AutoIndex market range</div>
                       <div className="text-xs font-bold text-zinc-500">
                         {vehicleYear} {vehicleMake} {vehicleModel} • {zip}
                       </div>
@@ -2623,7 +2541,7 @@ export default function App() {
                         <div className="text-lg font-black">{fmtMoney(fpvCalc.range.low)}</div>
                       </div>
                       <div className="rounded-2xl border border-zinc-200 bg-white p-3">
-                        <div className="text-xs font-bold text-zinc-500">FMV</div>
+                        <div className="text-xs font-bold text-zinc-500">Typical</div>
                         <div className="text-lg font-black">{fmtMoney(fpvCalc.range.mid)}</div>
                       </div>
                       <div className="rounded-2xl border border-zinc-200 bg-white p-3">
@@ -2632,7 +2550,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="mt-3 text-xs text-zinc-600">
-                      Anchor source: {anchorSource}. Availability can increase value for discontinued and rare parts.
+                      AutoIndex combines age, condition, availability, and market demand signals to estimate fair value.
                     </div>
                   </div>
 
@@ -2647,7 +2565,7 @@ export default function App() {
                       onClick={saveValuation}
                       className="inline-flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold hover:bg-zinc-50"
                     >
-                      Save F.P.V valuation <ClipboardList className="h-4 w-4" />
+                      Save valuation <ClipboardList className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => setSavedOpen(true)}
@@ -2655,78 +2573,6 @@ export default function App() {
                     >
                       Open saved <Heart className="h-4 w-4" />
                     </button>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-1 gap-3">
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-3">
-                      <div className="text-xs font-bold text-zinc-500">Age factor reference</div>
-                      <div className="mt-2 overflow-auto">
-                        <table className="w-full min-w-[420px] text-left text-xs">
-                          <thead>
-                            <tr className="text-zinc-500">
-                              <th className="py-1 font-bold">Age of part</th>
-                              <th className="py-1 font-bold">OEM AF</th>
-                              <th className="py-1 font-bold">Performance AF</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {AGE_FACTORS.map((row) => (
-                              <tr key={row.key} className="border-t border-zinc-100">
-                                <td className="py-1.5 font-semibold text-zinc-700">{row.label}</td>
-                                <td className="py-1.5 font-mono text-zinc-900">{row.oem.toFixed(2)}</td>
-                                <td className="py-1.5 font-mono text-zinc-900">{row.performance.toFixed(2)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <div className="rounded-2xl border border-zinc-200 bg-white p-3">
-                        <div className="text-xs font-bold text-zinc-500">Availability factor (AVF)</div>
-                        <div className="mt-2 overflow-auto">
-                          <table className="w-full min-w-[320px] text-left text-xs">
-                            <thead>
-                              <tr className="text-zinc-500">
-                                <th className="py-1 font-bold">Availability</th>
-                                <th className="py-1 font-bold">Factor</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {AVAILABILITY_FACTORS.map((row) => (
-                                <tr key={row.key} className="border-t border-zinc-100">
-                                  <td className="py-1.5 font-semibold text-zinc-700">{row.label}</td>
-                                  <td className="py-1.5 font-mono text-zinc-900">{row.factor.toFixed(2)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-zinc-200 bg-white p-3">
-                        <div className="text-xs font-bold text-zinc-500">Market demand factor (MDF)</div>
-                        <div className="mt-2 overflow-auto">
-                          <table className="w-full min-w-[280px] text-left text-xs">
-                            <thead>
-                              <tr className="text-zinc-500">
-                                <th className="py-1 font-bold">Demand level</th>
-                                <th className="py-1 font-bold">Factor</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {MARKET_DEMAND_FACTORS.map((row) => (
-                                <tr key={row.key} className="border-t border-zinc-100">
-                                  <td className="py-1.5 font-semibold text-zinc-700">{row.label}</td>
-                                  <td className="py-1.5 font-mono text-zinc-900">{row.factor.toFixed(2)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-
                   </div>
 
                   {valuations.length > 0 ? (
