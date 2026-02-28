@@ -4,6 +4,7 @@ import {
   BadgeCheck,
   Building2,
   CheckCircle2,
+  Gauge,
   Heart,
   Info,
   MapPin,
@@ -386,7 +387,57 @@ type MarketplaceSearchResult = {
   };
 };
 
-function inferAgeBandForMarketplace(condition: Condition, sourceText = ''): AgeBandKey {
+function parsePartYearInput(raw: string | number | null | undefined) {
+  if (raw == null) return null;
+  const digits = String(raw).replace(/[^0-9]/g, '');
+  if (!digits) return null;
+  const year = Number(digits.slice(0, 4));
+  const currentYear = new Date().getFullYear();
+  if (!Number.isFinite(year)) return null;
+  if (year < 1950 || year > currentYear + 1) return null;
+  return year;
+}
+
+function parseEngineMilesInput(raw: string | number | null | undefined) {
+  if (raw == null) return null;
+  const digits = String(raw).replace(/[^0-9]/g, '');
+  if (!digits) return null;
+  const miles = Number(digits);
+  if (!Number.isFinite(miles) || miles <= 0) return null;
+  return miles;
+}
+
+function ageBandFromPartYear(partYear: number | null): AgeBandKey | null {
+  if (partYear == null) return null;
+  const currentYear = new Date().getFullYear();
+  const age = clamp(currentYear - partYear, 0, 80);
+  if (age <= 1) return 'new_0_1';
+  if (age <= 3) return 'years_1_3';
+  if (age <= 7) return 'years_3_7';
+  if (age <= 15) return 'years_7_15';
+  return 'years_15_plus';
+}
+
+function engineMileageFactorForMarketplace(
+  category: Category,
+  condition: Condition,
+  engineMiles: number | null
+) {
+  if (category !== 'Engine' || engineMiles == null || condition === 'New') return 1;
+  if (engineMiles <= 30_000) return 1;
+  if (engineMiles <= 60_000) return 0.95;
+  if (engineMiles <= 100_000) return 0.88;
+  if (engineMiles <= 150_000) return 0.78;
+  return 0.68;
+}
+
+function inferAgeBandForMarketplace(
+  condition: Condition,
+  sourceText = '',
+  partYear: number | null = null
+): AgeBandKey {
+  const byYear = ageBandFromPartYear(partYear);
+  if (byYear) return byYear;
   const t = sourceText.toLowerCase();
   if (condition === 'New' || /brand\s*new|new\b|bnib|sealed|unused/.test(t)) return 'new_0_1';
   if (/15\+\s*(years?|yrs?)|15\s*plus|vintage|classic|nla|discontinued/.test(t)) return 'years_15_plus';
@@ -410,12 +461,21 @@ function computeFmvFromInputs(
   baseAnchor: number,
   category: Category,
   condition: Condition,
-  sourceText = ''
+  options?: {
+    sourceText?: string;
+    partYear?: number | null;
+    engineMiles?: number | null;
+  }
 ): MarketplaceSearchResult['valuation'] {
+  const sourceText = options?.sourceText ?? '';
+  const partYear = options?.partYear ?? null;
+  const engineMiles = options?.engineMiles ?? null;
   const partType: PartType = condition === 'Aftermarket' ? 'Performance' : 'OEM';
-  const ageBand = inferAgeBandForMarketplace(condition, sourceText);
+  const ageBand = inferAgeBandForMarketplace(condition, sourceText, partYear);
   const af = ageFactorFromBand(partType, ageBand);
-  const cf = condition === 'New' ? 1 : condition === 'Aftermarket' ? 0.75 : 0.65;
+  const baseConditionFactor = condition === 'New' ? 1 : condition === 'Aftermarket' ? 0.75 : 0.65;
+  const milesFactor = engineMileageFactorForMarketplace(category, condition, engineMiles);
+  const cf = Math.round(baseConditionFactor * milesFactor * 1000) / 1000;
   const avf = 1.1;
   const demandMap: Record<Category, number> = {
     Engine: 1.1,
@@ -526,7 +586,9 @@ function toFallbackSearchResults(input: {
   const pool = (filtered.length ? filtered : MOCK_LISTINGS.filter((l) => l.category === input.category)).slice(0, 8);
 
   return pool.map((l) => {
-    const valuation = computeFmvFromInputs(l.msrp || l.price, l.category, l.condition, `${l.title} ${l.fitment}`);
+    const valuation = computeFmvFromInputs(l.msrp || l.price, l.category, l.condition, {
+      sourceText: `${l.title} ${l.fitment}`
+    });
     const sellerTenureMonths = 6 + (smallHash(`${l.id}-tenure`) % 60);
     const estimatedDistanceMiles = 15 + (smallHash(l.id) % 120);
     const rawScore = compositeMarketplaceScore({
@@ -892,6 +954,8 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
   const [selectedCondition, setSelectedCondition] = useState<Condition>('Used');
   const [partTitle, setPartTitle] = useState('');
   const [askPrice, setAskPrice] = useState('');
+  const [partYear, setPartYear] = useState('');
+  const [engineMiles, setEngineMiles] = useState('');
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -916,6 +980,8 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
       askPrice?: number | null;
       detectedPrice?: number | null;
       locationText?: string | null;
+      partYear?: number | null;
+      engineMiles?: number | null;
     };
     valuation: {
       formula: {
@@ -964,6 +1030,10 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
   }, []);
 
   const run = async () => {
+    const parsedPartYear = parsePartYearInput(partYear);
+    const parsedEngineMiles =
+      selectedCategory === 'Engine' ? parseEngineMilesInput(engineMiles) : null;
+
     if (!HAS_API_BASE) {
       const parsedAsk = Number(String(askPrice).replace(/[^0-9.]/g, ''));
       const fallbackBase = Number.isFinite(parsedAsk) && parsedAsk > 0 ? parsedAsk : 450 + CATEGORIES.indexOf(selectedCategory) * 35;
@@ -971,7 +1041,11 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
         fallbackBase,
         selectedCategory,
         selectedCondition,
-        `${partTitle.trim()} ${link.trim()}`
+        {
+          sourceText: `${partTitle.trim()} ${link.trim()}`,
+          partYear: parsedPartYear,
+          engineMiles: parsedEngineMiles
+        }
       );
       const sellerTenureMonths = 4 + (smallHash(link) % 72);
       const estimatedDistanceMiles = 10 + (smallHash(`${buyerZip}|${link}`) % 140);
@@ -998,6 +1072,12 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
       if (fallbackPriceSignal === 'Over market') {
         fallbackRiskFlags.unshift('Ask price is above estimated FMV range. Negotiate or skip this listing.');
       }
+      if (selectedCategory === 'Engine' && parsedEngineMiles == null) {
+        fallbackRiskFlags.push('Add engine mileage from the listing to tighten FMV accuracy.');
+      }
+      if (selectedCategory === 'Engine' && parsedEngineMiles != null && parsedEngineMiles >= 120000) {
+        fallbackRiskFlags.push('High engine mileage can materially reduce fair market value.');
+      }
       setAnalysis({
         platform: 'Facebook Marketplace',
         sourceFetched: false,
@@ -1005,7 +1085,9 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           title: partTitle.trim() || 'Marketplace listing',
           askPrice: normalizedAsk,
           detectedPrice: null,
-          locationText: null
+          locationText: null,
+          partYear: parsedPartYear,
+          engineMiles: parsedEngineMiles
         },
         valuation: {
           formula: {
@@ -1044,7 +1126,9 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           partCategory: selectedCategory,
           partCondition: selectedCondition,
           partTitle: partTitle.trim(),
-          askPrice: askPrice.trim()
+          askPrice: askPrice.trim(),
+          partYear: partYear.trim(),
+          engineMiles: selectedCategory === 'Engine' ? engineMiles.trim() : ''
         })
       });
       const raw = await res.text();
@@ -1060,7 +1144,12 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           title: data.listing?.title ?? (partTitle.trim() || 'Unknown part'),
           askPrice: data.listing?.askPrice ?? null,
           detectedPrice: data.listing?.detectedPrice ?? null,
-          locationText: data.listing?.locationText ?? null
+          locationText: data.listing?.locationText ?? null,
+          partYear: data.listing?.partYear ?? parsedPartYear ?? null,
+          engineMiles:
+            selectedCategory === 'Engine'
+              ? (data.listing?.engineMiles ?? parsedEngineMiles ?? null)
+              : null
         },
         valuation: {
           formula: {
@@ -1241,6 +1330,36 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                 />
               </div>
             </div>
+
+            <div>
+              <label className="text-xs font-bold text-zinc-600">Part year (optional)</label>
+              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2">
+                <ClipboardList className="h-4 w-4 text-zinc-500" />
+                <input
+                  value={partYear}
+                  onChange={(e) => setPartYear(e.target.value)}
+                  placeholder="e.g., 2018"
+                  className="w-full bg-transparent text-sm outline-none"
+                />
+              </div>
+              <div className="mt-2 text-[12px] text-zinc-500">Used to estimate part age for age-factor matching.</div>
+            </div>
+
+            {selectedCategory === 'Engine' ? (
+              <div>
+                <label className="text-xs font-bold text-zinc-600">Engine miles (optional)</label>
+                <div className="mt-1 flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2">
+                  <Gauge className="h-4 w-4 text-zinc-500" />
+                  <input
+                    value={engineMiles}
+                    onChange={(e) => setEngineMiles(e.target.value)}
+                    placeholder="e.g., 82000"
+                    className="w-full bg-transparent text-sm outline-none"
+                  />
+                </div>
+                <div className="mt-2 text-[12px] text-zinc-500">Applied when evaluating engine listings.</div>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1338,6 +1457,16 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                 {analysis.listing.locationText ? (
                   <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
                     <MapPin className="h-4 w-4" /> Listing area: {analysis.listing.locationText}
+                  </span>
+                ) : null}
+                {typeof analysis.listing.partYear === 'number' ? (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                    <ClipboardList className="h-4 w-4" /> Part year: {analysis.listing.partYear}
+                  </span>
+                ) : null}
+                {analysis.partCategory === 'Engine' && typeof analysis.listing.engineMiles === 'number' ? (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                    <Gauge className="h-4 w-4" /> Engine miles: {analysis.listing.engineMiles.toLocaleString()}
                   </span>
                 ) : null}
               </div>

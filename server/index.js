@@ -91,6 +91,26 @@ function parsePrice(text) {
   return value;
 }
 
+function parsePartYearInput(raw) {
+  if (raw == null) return null;
+  const digits = String(raw).replace(/[^0-9]/g, '');
+  if (!digits) return null;
+  const year = Number(digits.slice(0, 4));
+  const currentYear = new Date().getFullYear();
+  if (!Number.isFinite(year)) return null;
+  if (year < 1950 || year > currentYear + 1) return null;
+  return year;
+}
+
+function parseEngineMilesInput(raw) {
+  if (raw == null) return null;
+  const digits = String(raw).replace(/[^0-9]/g, '');
+  if (!digits) return null;
+  const miles = Number(digits);
+  if (!Number.isFinite(miles) || miles <= 0) return null;
+  return miles;
+}
+
 function normalizeBrand(title) {
   if (!title) return 'oem';
   const t = title.toLowerCase();
@@ -119,6 +139,15 @@ function availabilityFactor(isMarketplaceLink) {
   return isMarketplaceLink ? 1.1 : 1.0;
 }
 
+function engineMileageFactor(category, condition, engineMiles) {
+  if (category !== 'Engine' || engineMiles == null || condition === 'New') return 1;
+  if (engineMiles <= 30000) return 1;
+  if (engineMiles <= 60000) return 0.95;
+  if (engineMiles <= 100000) return 0.88;
+  if (engineMiles <= 150000) return 0.78;
+  return 0.68;
+}
+
 function demandFactor(category) {
   const map = {
     Engine: 1.1,
@@ -134,7 +163,18 @@ function demandFactor(category) {
   return map[category] ?? 1.0;
 }
 
-function inferAgeBand(title = '', condition = 'Used') {
+function inferAgeBand(title = '', condition = 'Used', partYear = null) {
+  const year = parsePartYearInput(partYear);
+  if (year != null) {
+    const currentYear = new Date().getFullYear();
+    const age = clamp(currentYear - year, 0, 80);
+    if (age <= 1) return 'new_0_1';
+    if (age <= 3) return 'years_1_3';
+    if (age <= 7) return 'years_3_7';
+    if (age <= 15) return 'years_7_15';
+    return 'years_15_plus';
+  }
+
   const t = String(title).toLowerCase();
   if (condition === 'New' || /brand\s*new|new\b|bnib|sealed|unused/.test(t)) return 'new_0_1';
   if (/15\+\s*(years?|yrs?)|15\s*plus|vintage|classic|nla|discontinued/.test(t)) return 'years_15_plus';
@@ -212,6 +252,8 @@ function scoreMarketListing({
   category,
   condition,
   price,
+  partYear,
+  engineMiles,
   isMarketplaceSource,
   distanceMiles,
   sellerTenureMonths,
@@ -221,8 +263,11 @@ function scoreMarketListing({
   const brandKey = normalizeBrand(title);
   const rep = BRAND_REPUTATION[brandKey] ?? BRAND_REPUTATION.oem;
   const inferredPartType = condition === 'Aftermarket' ? 'Performance' : 'OEM';
-  const af = ageFactor(inferredPartType, inferAgeBand(title, condition));
-  const cf = conditionFactor(condition);
+  const normalizedEngineMiles = parseEngineMilesInput(engineMiles);
+  const af = ageFactor(inferredPartType, inferAgeBand(title, condition, partYear));
+  const cf = Math.round(
+    conditionFactor(condition) * engineMileageFactor(category, condition, normalizedEngineMiles) * 1000
+  ) / 1000;
   const avf = availabilityFactor(isMarketplaceSource);
   const mdf = demandFactor(category);
   const baseAnchor = Math.max(price ?? 300, 50);
@@ -263,6 +308,12 @@ function scoreMarketListing({
     riskFlags.push('Ask price deviates significantly from FMV estimate.');
   }
   if (condition === 'Used') riskFlags.push('Used part: request serials, photos, and fitment proof.');
+  if (category === 'Engine' && normalizedEngineMiles == null) {
+    riskFlags.push('Engine mileage missing; provide miles for tighter valuation confidence.');
+  }
+  if (category === 'Engine' && normalizedEngineMiles != null && normalizedEngineMiles >= 120000) {
+    riskFlags.push('High engine mileage can materially reduce fair market value.');
+  }
   if (rep.verifiedSignals < 200) riskFlags.push('Limited verified purchase signal volume for this part family.');
 
   return {
@@ -607,7 +658,16 @@ app.post('/api/auth/logout', (_, res) => {
 });
 
 app.post('/api/market-intelligence/analyze', async (req, res) => {
-  const { url, buyerZip, partCategory, partCondition, partTitle, askPrice } = req.body ?? {};
+  const {
+    url,
+    buyerZip,
+    partCategory,
+    partCondition,
+    partTitle,
+    askPrice,
+    partYear,
+    engineMiles
+  } = req.body ?? {};
   if (!url || typeof url !== 'string' || url.trim().length < 10) {
     res.status(400).json({ error: 'A valid listing URL is required.' });
     return;
@@ -615,6 +675,9 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
 
   const category = typeof partCategory === 'string' ? partCategory : 'Engine';
   const condition = partCondition === 'New' || partCondition === 'Aftermarket' ? partCondition : 'Used';
+  const normalizedPartYear = parsePartYearInput(partYear);
+  const normalizedEngineMiles =
+    category === 'Engine' ? parseEngineMilesInput(engineMiles) : null;
   const ask = parsePrice(askPrice);
   const meta = await fetchListingMetadata(url.trim());
 
@@ -623,8 +686,15 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
   const rep = BRAND_REPUTATION[brandKey] ?? BRAND_REPUTATION.oem;
 
   const inferredPartType = condition === 'Aftermarket' ? 'Performance' : 'OEM';
-  const af = ageFactor(inferredPartType, inferAgeBand(resolvedTitle, condition));
-  const cf = conditionFactor(condition);
+  const af = ageFactor(
+    inferredPartType,
+    inferAgeBand(resolvedTitle, condition, normalizedPartYear)
+  );
+  const cf = Math.round(
+    conditionFactor(condition) *
+      engineMileageFactor(category, condition, normalizedEngineMiles) *
+      1000
+  ) / 1000;
   const avf = availabilityFactor(meta.platform === 'Facebook Marketplace');
   const mdf = demandFactor(category);
 
@@ -662,6 +732,12 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
     riskFlags.push('Ask price deviates significantly from FMV estimate.');
   }
   if (condition === 'Used') riskFlags.push('Used part: request serials, photos, and fitment proof.');
+  if (category === 'Engine' && normalizedEngineMiles == null) {
+    riskFlags.push('Engine mileage missing; provide miles for tighter valuation confidence.');
+  }
+  if (category === 'Engine' && normalizedEngineMiles != null && normalizedEngineMiles >= 120000) {
+    riskFlags.push('High engine mileage can materially reduce fair market value.');
+  }
   if (rep.verifiedSignals < 200) riskFlags.push('Limited verified purchase signal volume for this part family.');
 
   const repScoreNorm = clamp((rep.score - 3.5) / 1.5, 0, 1);
@@ -694,6 +770,8 @@ app.post('/api/market-intelligence/analyze', async (req, res) => {
       detectedPrice: meta.price ?? null,
       askPrice: comparedAsk ?? null,
       locationText: meta.locationText,
+      partYear: normalizedPartYear,
+      engineMiles: normalizedEngineMiles,
       condition,
       category
     },
