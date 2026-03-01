@@ -1444,6 +1444,7 @@ export default function App() {
   const [authVendorLocation, setAuthVendorLocation] = useState('');
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
   const [verificationPreviewUrl, setVerificationPreviewUrl] = useState<string | null>(null);
+  const [verificationDeliveryNote, setVerificationDeliveryNote] = useState<string | null>(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
 
   const [sellTitle, setSellTitle] = useState('');
@@ -1536,6 +1537,7 @@ export default function App() {
         }
         setPendingVerificationEmail('');
         setVerificationPreviewUrl(null);
+        setVerificationDeliveryNote(null);
         setAuthMode('login');
         setAuthOpen(true);
         setAuthEmail(verifyEmail);
@@ -1721,6 +1723,7 @@ export default function App() {
             setPendingVerificationEmail(data.email);
             setAuthEmail(data.email);
           }
+          setVerificationDeliveryNote('Email is not verified yet. Check inbox/spam or resend verification.');
           toast('Email not verified. Check your inbox or resend verification below.');
           return;
         }
@@ -1733,6 +1736,7 @@ export default function App() {
       setAuthPassword('');
       setPendingVerificationEmail('');
       setVerificationPreviewUrl(null);
+      setVerificationDeliveryNote(null);
       setReviewComment('');
       toast(`Logged in as ${data.user.role}`);
     } catch {
@@ -1779,7 +1783,9 @@ export default function App() {
         error?: string;
         email?: string;
         verificationEmailSent?: boolean;
+        verificationFallbackEnabled?: boolean;
         previewUrl?: string;
+        emailDeliveryError?: string;
       };
       if (!res.ok) {
         toast(data.error ?? 'Signup failed');
@@ -1788,6 +1794,17 @@ export default function App() {
       setAuthMode('login');
       setPendingVerificationEmail(data.email ?? email);
       setVerificationPreviewUrl(data.previewUrl ?? null);
+      if (data.verificationEmailSent === false) {
+        setVerificationDeliveryNote(
+          data.previewUrl
+            ? 'Email delivery failed. Use the backup verification link below to activate your account.'
+            : data.emailDeliveryError
+              ? `Email delivery failed: ${data.emailDeliveryError}`
+              : 'Email delivery failed. Click resend verification.'
+        );
+      } else {
+        setVerificationDeliveryNote('Verification email sent. Check your inbox and spam folder.');
+      }
       setAuthPassword('');
       setAuthUsername(username);
       setAuthEmail(data.email ?? email);
@@ -1814,13 +1831,31 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      const data = (await res.json()) as { ok?: boolean; message?: string; error?: string; previewUrl?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        message?: string;
+        error?: string;
+        verificationEmailSent?: boolean;
+        previewUrl?: string;
+        emailDeliveryError?: string;
+      };
       if (!res.ok) {
         toast(data.error ?? 'Unable to resend verification email');
         return;
       }
       setPendingVerificationEmail(email);
       setVerificationPreviewUrl(data.previewUrl ?? null);
+      if (data.verificationEmailSent === false) {
+        setVerificationDeliveryNote(
+          data.previewUrl
+            ? 'Resend could not deliver email. Use the backup verification link below.'
+            : data.emailDeliveryError
+              ? `Resend failed: ${data.emailDeliveryError}`
+              : 'Resend failed. Contact support.'
+        );
+      } else {
+        setVerificationDeliveryNote('Verification email sent. Check your inbox and spam folder.');
+      }
       toast(data.message ?? 'Verification email sent');
     } catch {
       toast('Unable to resend verification email');
@@ -2461,12 +2496,17 @@ export default function App() {
               Resend verification email
             </button>
           ) : null}
+          {verificationDeliveryNote ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              {verificationDeliveryNote}
+            </div>
+          ) : null}
           {verificationPreviewUrl ? (
             <button
               onClick={() => window.open(verificationPreviewUrl, '_blank', 'noopener,noreferrer')}
               className="w-full rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] py-2 text-sm font-extrabold hover:bg-[#e7f3ff]"
             >
-              Open verification link preview
+              Verify account now (backup link)
             </button>
           ) : null}
           <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3 text-xs text-zinc-600">

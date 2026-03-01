@@ -83,6 +83,8 @@ For connected backend mode, set:
 - `SESSION_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` (backend)
 - `APP_BASE_URL` (frontend URL used in verification email links)
 - `EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` (email verification delivery)
+- `ALLOW_VERIFICATION_LINK_FALLBACK` (set `true` for onboarding while SMTP is being finalized; set `false` for strict email-only verification)
+- `EXPOSE_EMAIL_DELIVERY_ERROR` (recommended `false` in production once stable)
 - `COOKIE_SAME_SITE=none` and `COOKIE_SECURE=true` for GitHub Pages/custom-domain frontend hitting a separate backend domain
 - `COOKIE_DOMAIN` (optional; only if you need explicit cookie scoping)
 - `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`

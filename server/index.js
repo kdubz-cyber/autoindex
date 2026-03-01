@@ -29,6 +29,10 @@ const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
 const SMTP_SECURE = String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
 const SMTP_USER = process.env.SMTP_USER || '';
 const SMTP_PASS = process.env.SMTP_PASS || '';
+const ALLOW_VERIFICATION_LINK_FALLBACK =
+  String(process.env.ALLOW_VERIFICATION_LINK_FALLBACK || (!SMTP_HOST ? 'true' : 'false')).toLowerCase() === 'true';
+const EXPOSE_EMAIL_DELIVERY_ERROR =
+  String(process.env.EXPOSE_EMAIL_DELIVERY_ERROR || (!PROD ? 'true' : 'false')).toLowerCase() === 'true';
 const USERS_PATH = path.join(__dirname, 'data', 'users.json');
 const PAYMENTS_PATH = path.join(__dirname, 'data', 'payments.json');
 const HTTP_TIMEOUT_MS = 7000;
@@ -178,22 +182,33 @@ async function sendVerificationEmail({ email, username, token }) {
     console.log(`[AutoIndex] Email transport not configured. Verification link for ${email}: ${verifyUrl}`);
     return {
       sent: false,
-      previewUrl: verifyUrl
+      previewUrl: ALLOW_VERIFICATION_LINK_FALLBACK ? verifyUrl : null,
+      error: 'Email transport not configured'
     };
   }
+  try {
+    await mailTransport.sendMail({
+      from: EMAIL_FROM,
+      to: email,
+      subject: 'Verify your AutoIndex account',
+      text,
+      html
+    });
 
-  await mailTransport.sendMail({
-    from: EMAIL_FROM,
-    to: email,
-    subject: 'Verify your AutoIndex account',
-    text,
-    html
-  });
-
-  return {
-    sent: true,
-    previewUrl: null
-  };
+    return {
+      sent: true,
+      previewUrl: null,
+      error: null
+    };
+  } catch (error) {
+    const detail = error?.message ? String(error.message) : 'Unknown email delivery error';
+    console.error(`Failed to deliver verification email to ${email}:`, detail);
+    return {
+      sent: false,
+      previewUrl: ALLOW_VERIFICATION_LINK_FALLBACK ? verifyUrl : null,
+      error: detail
+    };
+  }
 }
 
 async function fetchWithTimeout(url, init = {}, timeoutMs = HTTP_TIMEOUT_MS) {
@@ -964,6 +979,7 @@ app.get('/api/system/status', (_, res) => {
     mode: PROD ? 'production' : 'development',
     authRequiresEmailVerification: true,
     emailServiceConfigured: Boolean(mailTransport),
+    emailFallbackVerificationEnabled: ALLOW_VERIFICATION_LINK_FALLBACK,
     paymentsConfigured: Boolean(stripe),
     platformFeeRate: PLATFORM_FEE_RATE,
     cookieSameSite: COOKIE_SAME_SITE,
@@ -1053,26 +1069,25 @@ app.post('/api/auth/signup', async (req, res) => {
   store.users.push(user);
   writeStore(store);
 
-  let emailDelivery = { sent: false, previewUrl: null };
-  try {
-    emailDelivery = await sendVerificationEmail({
-      email: normalizedEmail,
-      username: accountUsername,
-      token: verification.token
-    });
-  } catch (error) {
-    console.error('Failed to send verification email:', error);
-  }
+  const emailDelivery = await sendVerificationEmail({
+    email: normalizedEmail,
+    username: accountUsername,
+    token: verification.token
+  });
 
   res.status(201).json({
     ok: true,
     requiresEmailVerification: true,
     verificationEmailSent: emailDelivery.sent,
+    verificationFallbackEnabled: ALLOW_VERIFICATION_LINK_FALLBACK,
     email: normalizedEmail,
     message: emailDelivery.sent
       ? 'Account created. Check your email to verify your account.'
-      : 'Account created. Email service is not configured; verification link is available in server logs.',
-    previewUrl: !PROD ? emailDelivery.previewUrl : undefined
+      : emailDelivery.previewUrl
+        ? 'Account created, but email delivery failed. Use the backup verification link.'
+        : 'Account created, but verification email could not be delivered. Contact support to verify your account.',
+    previewUrl: emailDelivery.previewUrl ?? undefined,
+    emailDeliveryError: EXPOSE_EMAIL_DELIVERY_ERROR ? emailDelivery.error : undefined
   });
 });
 
@@ -1191,24 +1206,23 @@ app.post('/api/auth/resend-verification', async (req, res) => {
   user.emailVerificationSentAt = Date.now();
   writeStore(store);
 
-  let emailDelivery = { sent: false, previewUrl: null };
-  try {
-    emailDelivery = await sendVerificationEmail({
-      email,
-      username: user.username,
-      token: verification.token
-    });
-  } catch (error) {
-    console.error('Failed to resend verification email:', error);
-  }
+  const emailDelivery = await sendVerificationEmail({
+    email,
+    username: user.username,
+    token: verification.token
+  });
 
   res.json({
     ok: true,
     verificationEmailSent: emailDelivery.sent,
+    verificationFallbackEnabled: ALLOW_VERIFICATION_LINK_FALLBACK,
     message: emailDelivery.sent
       ? 'Verification email sent. Check your inbox.'
-      : 'Email service is not configured; verification link is available in server logs.',
-    previewUrl: !PROD ? emailDelivery.previewUrl : undefined
+      : emailDelivery.previewUrl
+        ? 'Verification email could not be delivered. Use the backup verification link.'
+        : 'Verification email could not be delivered. Contact support for manual verification.',
+    previewUrl: emailDelivery.previewUrl ?? undefined,
+    emailDeliveryError: EXPOSE_EMAIL_DELIVERY_ERROR ? emailDelivery.error : undefined
   });
 });
 

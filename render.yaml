@@ -35,6 +35,10 @@ services:
         sync: false
       - key: SMTP_PASS
         sync: false
+      - key: ALLOW_VERIFICATION_LINK_FALLBACK
+        value: "true"
+      - key: EXPOSE_EMAIL_DELIVERY_ERROR
+        value: "false"
       - key: COOKIE_SAME_SITE
         value: none
       - key: COOKIE_SECURE

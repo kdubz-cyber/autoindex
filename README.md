@@ -49,6 +49,8 @@ In production, set all of these environment variables:
 - `SMTP_PASS`
 - `PASSWORD_MIN_LENGTH` (default `10`)
 - `EMAIL_VERIFY_TOKEN_TTL_HOURS` (default `24`)
+- `ALLOW_VERIFICATION_LINK_FALLBACK` (default `true` when SMTP host is not configured)
+- `EXPOSE_EMAIL_DELIVERY_ERROR` (default `true` in development)
 - `COOKIE_SAME_SITE` (set `none` for cross-site frontend/backend deployments)
 - `COOKIE_SECURE` (must be `true` when `COOKIE_SAME_SITE=none`)
 - `COOKIE_DOMAIN` (optional)
@@ -142,6 +144,12 @@ GitHub Pages is static-only and cannot run the Node auth server. For secure back
    - Account login is blocked until the verification link is clicked.
    - Individual checkout redirects to Stripe Checkout and records paid orders.
    - Google Pay appears inside Stripe Checkout only if Stripe account + domain + client wallet eligibility requirements are met.
+
+### Verification fallback behavior
+
+- If SMTP delivery fails and `ALLOW_VERIFICATION_LINK_FALLBACK=true`, signup/resend responses include a backup verification URL.
+- This keeps first-time account verification testable while mail transport is being fixed.
+- For strict production email-only verification, set `ALLOW_VERIFICATION_LINK_FALLBACK=false` after SMTP is confirmed working.
 
 ## Tech stack
 
