@@ -2233,7 +2233,13 @@ export default function App() {
               </div>
               <button
                 onClick={() => {
-                  if (!session || session.role !== 'individual') {
+                  if (!session) {
+                    setAuthMode('login');
+                    setAuthOpen(true);
+                    toast('Login required to checkout');
+                    return;
+                  }
+                  if (session.role !== 'individual') {
                     toast('Only Individual Users can checkout');
                     return;
                   }
@@ -2729,173 +2735,231 @@ export default function App() {
       <main className="mx-auto max-w-7xl px-4 py-6">
         {activeTab === 'Valuation' ? (
           <>
-            <div className="overflow-hidden rounded-[32px] border border-zinc-200 bg-white shadow-sm">
-              <div className="grid grid-cols-1 lg:grid-cols-3">
-                <div className="lg:col-span-2">
-                  <SectionImage kind="hero" />
+            <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs font-bold text-zinc-500">Homepage Feature</div>
+                  <div className="mt-1 text-2xl font-black">Facebook Marketplace Fair Market Value Tool</div>
+                  <div className="mt-2 max-w-3xl text-sm text-zinc-600">
+                    Anyone can verify a Facebook Marketplace part and get AutoIndex FMV scoring. To buy or sell on
+                    AutoIndex, users must sign in with an Individual account.
+                  </div>
                 </div>
-                <div className="p-5">
-                  <div className="text-xs font-bold text-zinc-500">Valuation</div>
-                  <div className="mt-1 text-xl font-black">Price a part like a pro</div>
-                  <div className="mt-2 text-sm text-zinc-600">
-                    Build fair market value using part age, condition, availability, and market demand signals.
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600">Year</label>
-                      <input
-                        value={vehicleYear}
-                        onChange={(e) => setVehicleYear(e.target.value)}
-                        className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600">ZIP</label>
-                      <input
-                        value={zip}
-                        onChange={(e) => setZip(e.target.value)}
-                        className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600">Make</label>
-                      <input
-                        value={vehicleMake}
-                        onChange={(e) => setVehicleMake(e.target.value)}
-                        className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600">Model</label>
-                      <input
-                        value={vehicleModel}
-                        onChange={(e) => setVehicleModel(e.target.value)}
-                        className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600">Category</label>
-                      <select
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value as Category | 'All')}
-                        className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
-                      >
-                        <option value="All">All</option>
-                        {CATEGORIES.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600">Condition</label>
-                      <select
-                        value={condition}
-                        onChange={(e) => setCondition(e.target.value as Condition | 'All')}
-                        className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
-                      >
-                        <option value="All">All</option>
-                        <option value="New">New</option>
-                        <option value="Used">Used</option>
-                        <option value="Aftermarket">Aftermarket</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-extrabold">AutoIndex market range</div>
-                      <div className="text-xs font-bold text-zinc-500">
-                        {vehicleYear} {vehicleMake} {vehicleModel} • {zip}
-                      </div>
-                    </div>
-                    <div className="mt-3 grid grid-cols-3 gap-2">
-                      <div className="rounded-2xl border border-zinc-200 bg-white p-3">
-                        <div className="text-xs font-bold text-zinc-500">Low</div>
-                        <div className="text-lg font-black">{fmtMoney(fpvCalc.range.low)}</div>
-                      </div>
-                      <div className="rounded-2xl border border-zinc-200 bg-white p-3">
-                        <div className="text-xs font-bold text-zinc-500">Typical</div>
-                        <div className="text-lg font-black">{fmtMoney(fpvCalc.range.mid)}</div>
-                      </div>
-                      <div className="rounded-2xl border border-zinc-200 bg-white p-3">
-                        <div className="text-xs font-bold text-zinc-500">High</div>
-                        <div className="text-lg font-black">{fmtMoney(fpvCalc.range.high)}</div>
-                      </div>
-                    </div>
-                    <div className="mt-3 text-xs text-zinc-600">
-                      AutoIndex combines age, condition, availability, and market demand signals to estimate fair value.
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (!session) {
+                        setAuthMode('signup');
+                        setAuthRole('individual');
+                        setAuthOpen(true);
+                        toast('Create an Individual account to buy or sell');
+                        return;
+                      }
+                      if (session.role !== 'individual') {
+                        toast('Use an Individual account to buy or sell on AutoIndex');
+                        return;
+                      }
+                      setActiveTab('Sell');
+                      toast('Sell tools opened');
+                    }}
+                    className="rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                  >
+                    {session?.role === 'individual' ? 'Start buying and selling' : 'Create Individual account'}
+                  </button>
+                  {!session ? (
                     <button
-                      onClick={browseMatches}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                      onClick={() => {
+                        setAuthMode('login');
+                        setAuthOpen(true);
+                        toast('Login to buy or sell');
+                      }}
+                      className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold hover:bg-zinc-50"
                     >
-                      Browse matches <ArrowRight className="h-4 w-4" />
+                      Login
                     </button>
-                    <button
-                      onClick={saveValuation}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold hover:bg-zinc-50"
-                    >
-                      Save valuation <ClipboardList className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => setSavedOpen(true)}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold hover:bg-zinc-50"
-                    >
-                      Open saved <Heart className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  {valuations.length > 0 ? (
-                    <div className="mt-4 rounded-3xl border border-zinc-200 bg-white p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-black">Saved valuations</div>
-                        <button
-                          onClick={() => {
-                            setValuations([]);
-                            toast('Cleared valuations');
-                          }}
-                          className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-extrabold hover:bg-zinc-50"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                      <div className="mt-3 space-y-2">
-                        {valuations.slice(0, 3).map((v) => (
-                          <div key={v.ts} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
-                            <div className="text-xs font-bold text-zinc-600">
-                              {v.year} {v.make} {v.model} • {v.zip}
-                            </div>
-                            <div className="mt-1 text-xs text-zinc-600">
-                              {String(v.category)} • {String(v.condition)}
-                            </div>
-                            <div className="mt-2 grid grid-cols-3 gap-2">
-                              <div className="rounded-xl border border-zinc-200 bg-white p-2">
-                                <div className="text-[11px] font-bold text-zinc-500">Low</div>
-                                <div className="text-sm font-black">{fmtMoney(v.range.low)}</div>
-                              </div>
-                              <div className="rounded-xl border border-zinc-200 bg-white p-2">
-                                <div className="text-[11px] font-bold text-zinc-500">Typical</div>
-                                <div className="text-sm font-black">{fmtMoney(v.range.mid)}</div>
-                              </div>
-                              <div className="rounded-xl border border-zinc-200 bg-white p-2">
-                                <div className="text-[11px] font-bold text-zinc-500">High</div>
-                                <div className="text-sm font-black">{fmtMoney(v.range.high)}</div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
                   ) : null}
                 </div>
               </div>
             </div>
+
+            <div className="mt-6">
+              <MarketplaceAnalysisPanel toast={toast} />
+            </div>
+
+            <details className="mt-6 overflow-hidden rounded-[32px] border border-zinc-200 bg-white shadow-sm">
+              <summary className="cursor-pointer list-none border-b border-zinc-200 bg-zinc-50 px-5 py-4 text-sm font-extrabold text-zinc-800">
+                Advanced: Legacy AutoIndex Valuation + On-platform Listings
+              </summary>
+              <div className="p-0">
+                <div className="overflow-hidden rounded-b-[32px] bg-white">
+                  <div className="grid grid-cols-1 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                      <SectionImage kind="hero" />
+                    </div>
+                    <div className="p-5">
+                      <div className="text-xs font-bold text-zinc-500">Valuation</div>
+                      <div className="mt-1 text-xl font-black">Price a part like a pro</div>
+                      <div className="mt-2 text-sm text-zinc-600">
+                        Build fair market value using part age, condition, availability, and market demand signals.
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-bold text-zinc-600">Year</label>
+                          <input
+                            value={vehicleYear}
+                            onChange={(e) => setVehicleYear(e.target.value)}
+                            className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-zinc-600">ZIP</label>
+                          <input
+                            value={zip}
+                            onChange={(e) => setZip(e.target.value)}
+                            className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-zinc-600">Make</label>
+                          <input
+                            value={vehicleMake}
+                            onChange={(e) => setVehicleMake(e.target.value)}
+                            className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-zinc-600">Model</label>
+                          <input
+                            value={vehicleModel}
+                            onChange={(e) => setVehicleModel(e.target.value)}
+                            className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-zinc-600">Category</label>
+                          <select
+                            value={category}
+                            onChange={(e) => setCategory(e.target.value as Category | 'All')}
+                            className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                          >
+                            <option value="All">All</option>
+                            {CATEGORIES.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-zinc-600">Condition</label>
+                          <select
+                            value={condition}
+                            onChange={(e) => setCondition(e.target.value as Condition | 'All')}
+                            className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                          >
+                            <option value="All">All</option>
+                            <option value="New">New</option>
+                            <option value="Used">Used</option>
+                            <option value="Aftermarket">Aftermarket</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-extrabold">AutoIndex market range</div>
+                          <div className="text-xs font-bold text-zinc-500">
+                            {vehicleYear} {vehicleMake} {vehicleModel} • {zip}
+                          </div>
+                        </div>
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          <div className="rounded-2xl border border-zinc-200 bg-white p-3">
+                            <div className="text-xs font-bold text-zinc-500">Low</div>
+                            <div className="text-lg font-black">{fmtMoney(fpvCalc.range.low)}</div>
+                          </div>
+                          <div className="rounded-2xl border border-zinc-200 bg-white p-3">
+                            <div className="text-xs font-bold text-zinc-500">Typical</div>
+                            <div className="text-lg font-black">{fmtMoney(fpvCalc.range.mid)}</div>
+                          </div>
+                          <div className="rounded-2xl border border-zinc-200 bg-white p-3">
+                            <div className="text-xs font-bold text-zinc-500">High</div>
+                            <div className="text-lg font-black">{fmtMoney(fpvCalc.range.high)}</div>
+                          </div>
+                        </div>
+                        <div className="mt-3 text-xs text-zinc-600">
+                          AutoIndex combines age, condition, availability, and market demand signals to estimate fair value.
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={browseMatches}
+                          className="inline-flex items-center gap-2 rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                        >
+                          Browse matches <ArrowRight className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={saveValuation}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold hover:bg-zinc-50"
+                        >
+                          Save valuation <ClipboardList className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setSavedOpen(true)}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold hover:bg-zinc-50"
+                        >
+                          Open saved <Heart className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {valuations.length > 0 ? (
+                        <div className="mt-4 rounded-3xl border border-zinc-200 bg-white p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm font-black">Saved valuations</div>
+                            <button
+                              onClick={() => {
+                                setValuations([]);
+                                toast('Cleared valuations');
+                              }}
+                              className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-extrabold hover:bg-zinc-50"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            {valuations.slice(0, 3).map((v) => (
+                              <div key={v.ts} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                                <div className="text-xs font-bold text-zinc-600">
+                                  {v.year} {v.make} {v.model} • {v.zip}
+                                </div>
+                                <div className="mt-1 text-xs text-zinc-600">
+                                  {String(v.category)} • {String(v.condition)}
+                                </div>
+                                <div className="mt-2 grid grid-cols-3 gap-2">
+                                  <div className="rounded-xl border border-zinc-200 bg-white p-2">
+                                    <div className="text-[11px] font-bold text-zinc-500">Low</div>
+                                    <div className="text-sm font-black">{fmtMoney(v.range.low)}</div>
+                                  </div>
+                                  <div className="rounded-xl border border-zinc-200 bg-white p-2">
+                                    <div className="text-[11px] font-bold text-zinc-500">Typical</div>
+                                    <div className="text-sm font-black">{fmtMoney(v.range.mid)}</div>
+                                  </div>
+                                  <div className="rounded-xl border border-zinc-200 bg-white p-2">
+                                    <div className="text-[11px] font-bold text-zinc-500">High</div>
+                                    <div className="text-sm font-black">{fmtMoney(v.range.high)}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </details>
 
             <div className="mt-6 flex flex-wrap gap-2">
               <button
