@@ -361,6 +361,7 @@ type UsedPartsResearchRow = {
   manufacturerGroup: ManufacturerGroup;
   partCategory: ResearchPartCategory;
   partSubtypes: string;
+  remanAftermarketPriceCurrentUsd: number;
   usedPriceCurrentUsd: number;
   newOemPriceCurrentUsd: number;
   usedPrice2021Usd: number;
@@ -397,6 +398,23 @@ type PartCategoryAverageRow = {
 type ManufacturerMultiplierRow = {
   manufacturerGroup: ManufacturerGroup;
   priceLevelMultiplierNewOem: number;
+};
+
+type BaseToyotaMatrixSeedRow = {
+  partCategory: ResearchPartCategory;
+  partSubtypes: string;
+  usedPriceCurrentUsd: number;
+  newOemPriceCurrentUsd: number;
+  usedPriceSdCurrentUsd: number;
+  newOemPriceSdCurrentUsd: number;
+  usedSampleNCurrent: number;
+  newOemSampleNCurrent: number;
+  assumedRegion: 'US';
+  assumedVehicleAgeBand: string;
+  assumedMileageBand: string;
+  assumedConditionBand: string;
+  notesConditionFitment: string;
+  imputationFlags: string;
 };
 
 const CPI_PARTS_ANCHORS: Array<{ year: ResearchYear; index: number }> = [
@@ -447,18 +465,12 @@ const USED_PARTS_CATEGORY_AVERAGES: PartCategoryAverageRow[] = [
   { partCategory: 'Transmission', avgUsedPriceCurrentUsd: 1306.09, avgNewOemPriceCurrentUsd: 4934.29, avgUsedNewRatioCurrent: 0.268 }
 ];
 
-const USED_PARTS_MATRIX_ROWS: UsedPartsResearchRow[] = [
+const BASE_TOYOTA_MATRIX_ROWS: BaseToyotaMatrixSeedRow[] = [
   {
-    manufacturerGroup: 'Toyota',
     partCategory: 'Engine',
     partSubtypes: 'complete assembly (long block), short block, partial engine assembly',
     usedPriceCurrentUsd: 1835.99,
     newOemPriceCurrentUsd: 11907.01,
-    usedPrice2021Usd: 1465.47,
-    usedPrice2016Usd: 1422.12,
-    usedPrice2006Usd: 1123.0,
-    usedPrice1996Usd: 1004.92,
-    usedNewRatioCurrent: 0.1542,
     usedPriceSdCurrentUsd: 642.6,
     newOemPriceSdCurrentUsd: 2976.75,
     usedSampleNCurrent: 1,
@@ -468,20 +480,14 @@ const USED_PARTS_MATRIX_ROWS: UsedPartsResearchRow[] = [
     assumedMileageBand: '100k-150k',
     assumedConditionBand: 'grade B (good working, cosmetic wear)',
     notesConditionFitment:
-      'Used price from a recycled complete engine listing; new price referenced as OEM partial engine assembly; engine pricing varies with displacement and emissions kit.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
+      'Used price from recycled complete engine listings; value swings by displacement, accessories, and emissions kit.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; manufacturer_scaling=multiplier_model; sd=CV_imputed'
   },
   {
-    manufacturerGroup: 'Toyota',
     partCategory: 'Transmission',
     partSubtypes: 'automatic transaxle, manual transmission, CVT',
     usedPriceCurrentUsd: 1100.0,
     newOemPriceCurrentUsd: 4049.62,
-    usedPrice2021Usd: 877.94,
-    usedPrice2016Usd: 851.99,
-    usedPrice2006Usd: 672.97,
-    usedPrice1996Usd: 602.05,
-    usedNewRatioCurrent: 0.2716,
     usedPriceSdCurrentUsd: 330.0,
     newOemPriceSdCurrentUsd: 809.92,
     usedSampleNCurrent: 1,
@@ -490,20 +496,14 @@ const USED_PARTS_MATRIX_ROWS: UsedPartsResearchRow[] = [
     assumedVehicleAgeBand: '8-12 years',
     assumedMileageBand: '100k-150k',
     assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'New price referenced as OEM automatic transaxle assembly; core charges may apply.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
+    notesConditionFitment: 'Core deposits, calibration variants, and freight can materially shift all-in cost.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; manufacturer_scaling=multiplier_model; sd=CV_imputed'
   },
   {
-    manufacturerGroup: 'Toyota',
     partCategory: 'Alternator',
     partSubtypes: 'alternator with regulator, reman alternator, mild-hybrid starter-generator',
     usedPriceCurrentUsd: 85.0,
     newOemPriceCurrentUsd: 703.27,
-    usedPrice2021Usd: 67.88,
-    usedPrice2016Usd: 65.87,
-    usedPrice2006Usd: 52.02,
-    usedPrice1996Usd: 46.48,
-    usedNewRatioCurrent: 0.1209,
     usedPriceSdCurrentUsd: 29.75,
     newOemPriceSdCurrentUsd: 105.49,
     usedSampleNCurrent: 1,
@@ -512,20 +512,14 @@ const USED_PARTS_MATRIX_ROWS: UsedPartsResearchRow[] = [
     assumedVehicleAgeBand: '8-12 years',
     assumedMileageBand: '100k-150k',
     assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Used alternator values depend on mileage, bearing wear, and warranty coverage.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
+    notesConditionFitment: 'Used alternator value tracks bearing wear, bench-test status, and warranty terms.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; manufacturer_scaling=multiplier_model; sd=CV_imputed'
   },
   {
-    manufacturerGroup: 'Toyota',
     partCategory: 'Starter',
     partSubtypes: 'starter motor assembly, reman starter',
     usedPriceCurrentUsd: 86.92,
     newOemPriceCurrentUsd: 222.38,
-    usedPrice2021Usd: 69.41,
-    usedPrice2016Usd: 67.35,
-    usedPrice2006Usd: 53.14,
-    usedPrice1996Usd: 47.5,
-    usedNewRatioCurrent: 0.3909,
     usedPriceSdCurrentUsd: 30.42,
     newOemPriceSdCurrentUsd: 33.36,
     usedSampleNCurrent: 1,
@@ -534,20 +528,14 @@ const USED_PARTS_MATRIX_ROWS: UsedPartsResearchRow[] = [
     assumedVehicleAgeBand: '8-12 years',
     assumedMileageBand: '100k-150k',
     assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Starter pricing is sensitive to engine options and stop-start hardware.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
+    notesConditionFitment: 'Starter pricing varies by engine and stop-start hardware compatibility.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; manufacturer_scaling=multiplier_model; sd=CV_imputed'
   },
   {
-    manufacturerGroup: 'Toyota',
     partCategory: 'Door',
     partSubtypes: 'door shell, door complete (glass/regulator), trim panel',
     usedPriceCurrentUsd: 346.75,
     newOemPriceCurrentUsd: 953.58,
-    usedPrice2021Usd: 276.57,
-    usedPrice2016Usd: 268.35,
-    usedPrice2006Usd: 211.74,
-    usedPrice1996Usd: 189.29,
-    usedNewRatioCurrent: 0.3635,
     usedPriceSdCurrentUsd: 104.02,
     newOemPriceSdCurrentUsd: 190.72,
     usedSampleNCurrent: 1,
@@ -556,20 +544,14 @@ const USED_PARTS_MATRIX_ROWS: UsedPartsResearchRow[] = [
     assumedVehicleAgeBand: '8-12 years',
     assumedMileageBand: '100k-150k',
     assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Used body panels are freight-sensitive; color and trim match shift clearing price.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
+    notesConditionFitment: 'Freight and color/trim matching are common spread drivers for body panels.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; manufacturer_scaling=multiplier_model; sd=CV_imputed'
   },
   {
-    manufacturerGroup: 'Toyota',
     partCategory: 'Bumper',
     partSubtypes: 'bumper cover, reinforcement, absorber/energy foam',
     usedPriceCurrentUsd: 150.0,
     newOemPriceCurrentUsd: 249.82,
-    usedPrice2021Usd: 119.72,
-    usedPrice2016Usd: 116.16,
-    usedPrice2006Usd: 91.59,
-    usedPrice1996Usd: 81.75,
-    usedNewRatioCurrent: 0.6004,
     usedPriceSdCurrentUsd: 45.0,
     newOemPriceSdCurrentUsd: 37.47,
     usedSampleNCurrent: 1,
@@ -578,20 +560,14 @@ const USED_PARTS_MATRIX_ROWS: UsedPartsResearchRow[] = [
     assumedVehicleAgeBand: '8-12 years',
     assumedMileageBand: '100k-150k',
     assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Bumper cover values often exclude paint and clip kits.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
+    notesConditionFitment: 'Bumper cover listings often exclude paint prep and hardware kits.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; manufacturer_scaling=multiplier_model; sd=CV_imputed'
   },
   {
-    manufacturerGroup: 'Toyota',
     partCategory: 'Headlight',
     partSubtypes: 'halogen, HID/xenon, LED, adaptive assemblies',
     usedPriceCurrentUsd: 185.9,
     newOemPriceCurrentUsd: 503.15,
-    usedPrice2021Usd: 148.4,
-    usedPrice2016Usd: 144.0,
-    usedPrice2006Usd: 113.46,
-    usedPrice1996Usd: 101.45,
-    usedNewRatioCurrent: 0.3695,
     usedPriceSdCurrentUsd: 74.36,
     newOemPriceSdCurrentUsd: 176.1,
     usedSampleNCurrent: 1,
@@ -600,20 +576,14 @@ const USED_PARTS_MATRIX_ROWS: UsedPartsResearchRow[] = [
     assumedVehicleAgeBand: '8-12 years',
     assumedMileageBand: '100k-150k',
     assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Tab condition, lens haze, and module inclusion create wide spread.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
+    notesConditionFitment: 'Lens haze, broken tabs, and module inclusion create wide pricing dispersion.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; manufacturer_scaling=multiplier_model; sd=CV_imputed'
   },
   {
-    manufacturerGroup: 'Toyota',
     partCategory: 'Airbag',
     partSubtypes: 'steering, knee, curtain, passenger module',
     usedPriceCurrentUsd: 169.0,
     newOemPriceCurrentUsd: 1153.19,
-    usedPrice2021Usd: 134.92,
-    usedPrice2016Usd: 130.91,
-    usedPrice2006Usd: 103.2,
-    usedPrice1996Usd: 92.49,
-    usedNewRatioCurrent: 0.1466,
     usedPriceSdCurrentUsd: 59.15,
     newOemPriceSdCurrentUsd: 345.96,
     usedSampleNCurrent: 2,
@@ -622,20 +592,14 @@ const USED_PARTS_MATRIX_ROWS: UsedPartsResearchRow[] = [
     assumedVehicleAgeBand: '8-12 years',
     assumedMileageBand: '100k-150k',
     assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Airbag modules require strict provenance and deployment-state verification.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
+    notesConditionFitment: 'Airbag modules require strict provenance and undeployed-state verification.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; manufacturer_scaling=multiplier_model; sd=CV_imputed'
   },
   {
-    manufacturerGroup: 'Toyota',
     partCategory: 'ECU',
     partSubtypes: 'ECM/PCM, BCM, SRS module, ABS module',
     usedPriceCurrentUsd: 31.81,
     newOemPriceCurrentUsd: 1169.66,
-    usedPrice2021Usd: 25.39,
-    usedPrice2016Usd: 24.64,
-    usedPrice2006Usd: 19.44,
-    usedPrice1996Usd: 17.39,
-    usedNewRatioCurrent: 0.0272,
     usedPriceSdCurrentUsd: 15.9,
     newOemPriceSdCurrentUsd: 350.9,
     usedSampleNCurrent: 2,
@@ -644,209 +608,95 @@ const USED_PARTS_MATRIX_ROWS: UsedPartsResearchRow[] = [
     assumedVehicleAgeBand: '8-12 years',
     assumedMileageBand: '100k-150k',
     assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Used modules may require programming, immobilizer pairing, or cloning.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
-  },
-
-  {
-    manufacturerGroup: 'Ford',
-    partCategory: 'Engine',
-    partSubtypes: 'complete assembly (long block), short block, partial engine assembly',
-    usedPriceCurrentUsd: 1608.89,
-    newOemPriceCurrentUsd: 10284.85,
-    usedPrice2021Usd: 1284.27,
-    usedPrice2016Usd: 1246.46,
-    usedPrice2006Usd: 984.09,
-    usedPrice1996Usd: 880.64,
-    usedNewRatioCurrent: 0.1564,
-    usedPriceSdCurrentUsd: 563.11,
-    newOemPriceSdCurrentUsd: 2571.21,
-    usedSampleNCurrent: 1,
-    newOemSampleNCurrent: 1,
-    assumedRegion: 'US',
-    assumedVehicleAgeBand: '8-12 years',
-    assumedMileageBand: '100k-150k',
-    assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Assembly price variance is heavily driven by displacement, accessories, and emissions kit.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
-  },
-  {
-    manufacturerGroup: 'Ford',
-    partCategory: 'Transmission',
-    partSubtypes: 'automatic transaxle, manual transmission, CVT',
-    usedPriceCurrentUsd: 963.97,
-    newOemPriceCurrentUsd: 3497.86,
-    usedPrice2021Usd: 769.22,
-    usedPrice2016Usd: 746.49,
-    usedPrice2006Usd: 589.8,
-    usedPrice1996Usd: 527.62,
-    usedNewRatioCurrent: 0.2755,
-    usedPriceSdCurrentUsd: 289.19,
-    newOemPriceSdCurrentUsd: 699.57,
-    usedSampleNCurrent: 1,
-    newOemSampleNCurrent: 1,
-    assumedRegion: 'US',
-    assumedVehicleAgeBand: '8-12 years',
-    assumedMileageBand: '100k-150k',
-    assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Core deposits and model-specific calibration materially affect all-in cost.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
-  },
-  {
-    manufacturerGroup: 'Ford',
-    partCategory: 'Alternator',
-    partSubtypes: 'alternator with regulator, reman alternator, mild-hybrid starter-generator',
-    usedPriceCurrentUsd: 74.49,
-    newOemPriceCurrentUsd: 607.45,
-    usedPrice2021Usd: 59.44,
-    usedPrice2016Usd: 57.69,
-    usedPrice2006Usd: 45.57,
-    usedPrice1996Usd: 40.86,
-    usedNewRatioCurrent: 0.1227,
-    usedPriceSdCurrentUsd: 26.07,
-    newOemPriceSdCurrentUsd: 91.12,
-    usedSampleNCurrent: 1,
-    newOemSampleNCurrent: 1,
-    assumedRegion: 'US',
-    assumedVehicleAgeBand: '8-12 years',
-    assumedMileageBand: '100k-150k',
-    assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Used units are sensitive to pulley/bearing condition and return policy.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
-  },
-  {
-    manufacturerGroup: 'Ford',
-    partCategory: 'Starter',
-    partSubtypes: 'starter motor assembly, reman starter',
-    usedPriceCurrentUsd: 76.17,
-    newOemPriceCurrentUsd: 192.09,
-    usedPrice2021Usd: 60.83,
-    usedPrice2016Usd: 59.03,
-    usedPrice2006Usd: 46.62,
-    usedPrice1996Usd: 41.79,
-    usedNewRatioCurrent: 0.3965,
-    usedPriceSdCurrentUsd: 26.66,
-    newOemPriceSdCurrentUsd: 28.81,
-    usedSampleNCurrent: 1,
-    newOemSampleNCurrent: 1,
-    assumedRegion: 'US',
-    assumedVehicleAgeBand: '8-12 years',
-    assumedMileageBand: '100k-150k',
-    assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Stop-start and engine-option differences create SKU-level spread.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
-  },
-  {
-    manufacturerGroup: 'Ford',
-    partCategory: 'Door',
-    partSubtypes: 'door shell, door complete (glass/regulator), trim panel',
-    usedPriceCurrentUsd: 303.52,
-    newOemPriceCurrentUsd: 823.69,
-    usedPrice2021Usd: 242.15,
-    usedPrice2016Usd: 234.98,
-    usedPrice2006Usd: 185.3,
-    usedPrice1996Usd: 165.97,
-    usedNewRatioCurrent: 0.3685,
-    usedPriceSdCurrentUsd: 91.06,
-    newOemPriceSdCurrentUsd: 164.74,
-    usedSampleNCurrent: 1,
-    newOemSampleNCurrent: 1,
-    assumedRegion: 'US',
-    assumedVehicleAgeBand: '8-12 years',
-    assumedMileageBand: '100k-150k',
-    assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Freight and paint readiness are common sources of quote variance.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
-  },
-  {
-    manufacturerGroup: 'Ford',
-    partCategory: 'Bumper',
-    partSubtypes: 'bumper cover, reinforcement, absorber/energy foam',
-    usedPriceCurrentUsd: 131.46,
-    newOemPriceCurrentUsd: 215.77,
-    usedPrice2021Usd: 104.92,
-    usedPrice2016Usd: 101.82,
-    usedPrice2006Usd: 80.3,
-    usedPrice1996Usd: 71.89,
-    usedNewRatioCurrent: 0.6093,
-    usedPriceSdCurrentUsd: 39.44,
-    newOemPriceSdCurrentUsd: 32.37,
-    usedSampleNCurrent: 1,
-    newOemSampleNCurrent: 1,
-    assumedRegion: 'US',
-    assumedVehicleAgeBand: '8-12 years',
-    assumedMileageBand: '100k-150k',
-    assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Bumper covers are highly condition-sensitive at mounting tabs and edges.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
-  },
-  {
-    manufacturerGroup: 'Ford',
-    partCategory: 'Headlight',
-    partSubtypes: 'halogen, HID/xenon, LED, adaptive assemblies',
-    usedPriceCurrentUsd: 163.03,
-    newOemPriceCurrentUsd: 434.39,
-    usedPrice2021Usd: 130.16,
-    usedPrice2016Usd: 126.3,
-    usedPrice2006Usd: 99.55,
-    usedPrice1996Usd: 89.15,
-    usedNewRatioCurrent: 0.3753,
-    usedPriceSdCurrentUsd: 65.21,
-    newOemPriceSdCurrentUsd: 152.04,
-    usedSampleNCurrent: 1,
-    newOemSampleNCurrent: 1,
-    assumedRegion: 'US',
-    assumedVehicleAgeBand: '8-12 years',
-    assumedMileageBand: '100k-150k',
-    assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Inclusion of ballast/module and lens condition drives large spread.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
-  },
-  {
-    manufacturerGroup: 'Ford',
-    partCategory: 'Airbag',
-    partSubtypes: 'steering, knee, curtain, passenger module',
-    usedPriceCurrentUsd: 148.33,
-    newOemPriceCurrentUsd: 995.93,
-    usedPrice2021Usd: 118.41,
-    usedPrice2016Usd: 114.9,
-    usedPrice2006Usd: 90.64,
-    usedPrice1996Usd: 81.12,
-    usedNewRatioCurrent: 0.1489,
-    usedPriceSdCurrentUsd: 51.92,
-    newOemPriceSdCurrentUsd: 298.78,
-    usedSampleNCurrent: 2,
-    newOemSampleNCurrent: 1,
-    assumedRegion: 'US',
-    assumedVehicleAgeBand: '8-12 years',
-    assumedMileageBand: '100k-150k',
-    assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Safety documentation and deployment status are mandatory before purchase.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
-  },
-  {
-    manufacturerGroup: 'Ford',
-    partCategory: 'ECU',
-    partSubtypes: 'ECM/PCM, BCM, SRS module, ABS module',
-    usedPriceCurrentUsd: 27.92,
-    newOemPriceCurrentUsd: 1009.97,
-    usedPrice2021Usd: 22.3,
-    usedPrice2016Usd: 21.64,
-    usedPrice2006Usd: 17.07,
-    usedPrice1996Usd: 15.28,
-    usedNewRatioCurrent: 0.0277,
-    usedPriceSdCurrentUsd: 13.96,
-    newOemPriceSdCurrentUsd: 302.99,
-    usedSampleNCurrent: 2,
-    newOemSampleNCurrent: 1,
-    assumedRegion: 'US',
-    assumedVehicleAgeBand: '8-12 years',
-    assumedMileageBand: '100k-150k',
-    assumedConditionBand: 'grade B (good working, cosmetic wear)',
-    notesConditionFitment: 'Programming and immobilizer pairing are primary value-risk drivers.',
-    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
+    notesConditionFitment: 'Used modules often require programming/immobilizer pairing and carry fitment risk.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; manufacturer_scaling=multiplier_model; sd=CV_imputed'
   }
 ];
+
+const REMAN_AFTERMARKET_RATIO_BY_PART: Record<ResearchPartCategory, number> = {
+  Engine: 0.46,
+  Transmission: 0.55,
+  Alternator: 0.62,
+  Starter: 0.58,
+  Door: 0.48,
+  Bumper: 0.72,
+  Headlight: 0.66,
+  Airbag: 0.35,
+  ECU: 0.3
+};
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function roundRatio(value: number) {
+  return Math.round(value * 10000) / 10000;
+}
+
+function cpiBackcastFrom2026(usedPrice2026: number, targetYear: 1996 | 2006 | 2016 | 2021) {
+  const baseIndex = CPI_PARTS_ANCHORS.find((row) => row.year === 2026)?.index ?? 186.92;
+  const targetIndex = CPI_PARTS_ANCHORS.find((row) => row.year === targetYear)?.index ?? baseIndex;
+  return roundMoney((usedPrice2026 * targetIndex) / baseIndex);
+}
+
+const toyotaUsedAverage = USED_PARTS_MANUFACTURER_AVERAGES.find((row) => row.manufacturerGroup === 'Toyota')?.avgUsedPriceCurrentUsd ?? 1;
+const toyotaNewAverage = USED_PARTS_MANUFACTURER_AVERAGES.find((row) => row.manufacturerGroup === 'Toyota')?.avgNewOemPriceCurrentUsd ?? 1;
+
+const usedScaleByManufacturer: Record<ManufacturerGroup, number> = USED_PARTS_MANUFACTURER_AVERAGES.reduce(
+  (acc, row) => {
+    acc[row.manufacturerGroup] = row.avgUsedPriceCurrentUsd / toyotaUsedAverage;
+    return acc;
+  },
+  {} as Record<ManufacturerGroup, number>
+);
+
+const newScaleByManufacturer: Record<ManufacturerGroup, number> = USED_PARTS_MANUFACTURER_AVERAGES.reduce(
+  (acc, row) => {
+    acc[row.manufacturerGroup] = row.avgNewOemPriceCurrentUsd / toyotaNewAverage;
+    return acc;
+  },
+  {} as Record<ManufacturerGroup, number>
+);
+
+const USED_PARTS_MATRIX_ROWS: UsedPartsResearchRow[] = USED_PARTS_MANUFACTURER_MULTIPLIERS.flatMap((manufacturer) => {
+  const manufacturerGroup = manufacturer.manufacturerGroup;
+  const usedScale = usedScaleByManufacturer[manufacturerGroup] ?? 1;
+  const newScale = newScaleByManufacturer[manufacturerGroup] ?? 1;
+
+  return BASE_TOYOTA_MATRIX_ROWS.map((seed) => {
+    const usedPriceCurrentUsd = roundMoney(seed.usedPriceCurrentUsd * usedScale);
+    const newOemPriceCurrentUsd = roundMoney(seed.newOemPriceCurrentUsd * newScale);
+    const remanAftermarketCandidate = roundMoney(newOemPriceCurrentUsd * REMAN_AFTERMARKET_RATIO_BY_PART[seed.partCategory]);
+    const remanAftermarketPriceCurrentUsd = roundMoney(
+      clamp(remanAftermarketCandidate, usedPriceCurrentUsd * 1.05, newOemPriceCurrentUsd * 0.95)
+    );
+    const usedNewRatioCurrent = roundRatio(usedPriceCurrentUsd / Math.max(newOemPriceCurrentUsd, 1));
+
+    return {
+      manufacturerGroup,
+      partCategory: seed.partCategory,
+      partSubtypes: seed.partSubtypes,
+      remanAftermarketPriceCurrentUsd,
+      usedPriceCurrentUsd,
+      newOemPriceCurrentUsd,
+      usedPrice2021Usd: cpiBackcastFrom2026(usedPriceCurrentUsd, 2021),
+      usedPrice2016Usd: cpiBackcastFrom2026(usedPriceCurrentUsd, 2016),
+      usedPrice2006Usd: cpiBackcastFrom2026(usedPriceCurrentUsd, 2006),
+      usedPrice1996Usd: cpiBackcastFrom2026(usedPriceCurrentUsd, 1996),
+      usedNewRatioCurrent,
+      usedPriceSdCurrentUsd: roundMoney(seed.usedPriceSdCurrentUsd * usedScale),
+      newOemPriceSdCurrentUsd: roundMoney(seed.newOemPriceSdCurrentUsd * newScale),
+      usedSampleNCurrent: seed.usedSampleNCurrent,
+      newOemSampleNCurrent: seed.newOemSampleNCurrent,
+      assumedRegion: seed.assumedRegion,
+      assumedVehicleAgeBand: seed.assumedVehicleAgeBand,
+      assumedMileageBand: seed.assumedMileageBand,
+      assumedConditionBand: seed.assumedConditionBand,
+      notesConditionFitment: `${seed.notesConditionFitment} Manufacturer-normalized for ${manufacturerGroup} price levels.`,
+      imputationFlags: seed.imputationFlags
+    };
+  });
+});
 
 
 function clamp(n: number, min: number, max: number) {
@@ -1978,8 +1828,8 @@ function PartMatrixPanel({
             <div className="text-xs font-bold text-zinc-500">Part Matrix</div>
             <div className="mt-1 text-2xl font-black">Used Automotive Parts Market Matrix (1996-2026)</div>
             <div className="mt-2 max-w-4xl text-sm text-zinc-600">
-              U.S.-assumed research dataset showing used-part pricing by manufacturer group and part category, with current
-              price anchors plus CPI-backcasted 2021, 2016, 2006, and 1996 reference values.
+              U.S.-assumed deep research matrix with side-by-side New OEM, Reman/Aftermarket, and Used values by
+              manufacturer group and part category, plus CPI-backcasted 2021, 2016, 2006, and 1996 used-price references.
             </div>
           </div>
           <button
@@ -2072,17 +1922,21 @@ function PartMatrixPanel({
 
       <div className="overflow-hidden rounded-[32px] border border-[#dbe3ef] bg-white shadow-sm">
         <div className="border-b border-[#dbe3ef] bg-[#f5f7fb] px-5 py-4">
-          <div className="text-sm font-black">Reference matrix rows (U.S. assumed, CPI-normalized history)</div>
-          <div className="mt-1 text-xs text-zinc-600">Current values plus backcasted 2021/2016/2006/1996 used-price references.</div>
+          <div className="text-sm font-black">Reference matrix rows (price differences: New vs Reman/Aftermarket vs Used)</div>
+          <div className="mt-1 text-xs text-zinc-600">
+            Current value comparison plus CPI-backcasted 2021/2016/2006/1996 used-price references.
+          </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-[1500px] w-full text-left">
+          <table className="w-full min-w-[1760px] text-left">
             <thead className="text-xs uppercase tracking-wide text-zinc-500">
               <tr>
                 <th className="px-4 py-3">Manufacturer</th>
                 <th className="px-4 py-3">Part category</th>
-                <th className="px-4 py-3">Used 2026</th>
                 <th className="px-4 py-3">New OEM 2026</th>
+                <th className="px-4 py-3">Reman/Aftermarket 2026</th>
+                <th className="px-4 py-3">Used 2026</th>
+                <th className="px-4 py-3">New to used spread</th>
                 <th className="px-4 py-3">Used/New ratio</th>
                 <th className="px-4 py-3">Used 2021</th>
                 <th className="px-4 py-3">Used 2016</th>
@@ -2093,6 +1947,8 @@ function PartMatrixPanel({
             </thead>
             <tbody className="text-sm">
               {filteredRows.map((row, idx) => {
+                const spreadUsd = row.newOemPriceCurrentUsd - row.usedPriceCurrentUsd;
+                const spreadPct = (1 - row.usedNewRatioCurrent) * 100;
                 return (
                   <tr key={`${row.manufacturerGroup}-${row.partCategory}-${idx}`} className="border-t border-[#edf2f8] align-top">
                     <td className="px-4 py-3 font-bold text-zinc-800">{row.manufacturerGroup}</td>
@@ -2100,8 +1956,13 @@ function PartMatrixPanel({
                       <div className="font-bold text-zinc-800">{row.partCategory}</div>
                       <div className="mt-1 text-xs text-zinc-500">{row.partSubtypes}</div>
                     </td>
-                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.usedPriceCurrentUsd)}</td>
                     <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.newOemPriceCurrentUsd)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.remanAftermarketPriceCurrentUsd)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.usedPriceCurrentUsd)}</td>
+                    <td className="px-4 py-3 text-zinc-700">
+                      <div className="font-bold text-zinc-800">{fmtMoney(spreadUsd)}</div>
+                      <div className="mt-1 text-xs text-zinc-500">{spreadPct.toFixed(1)}% below new</div>
+                    </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex rounded-full border border-[#dbe3ef] bg-white px-2.5 py-1 text-xs font-black text-zinc-700">
                         {formatRatio(row.usedNewRatioCurrent)}
@@ -2119,7 +1980,7 @@ function PartMatrixPanel({
               })}
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-8 text-sm text-zinc-600" colSpan={10}>
+                  <td className="px-4 py-8 text-sm text-zinc-600" colSpan={12}>
                     No matrix rows match current search/filter criteria.
                   </td>
                 </tr>
