@@ -937,7 +937,7 @@ function ListingCard({ listing, vendor, onSave, onCart, onOpen }: ListingCardPro
           ) : null}
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <button
             onClick={() => onCart(listing.id)}
             className="rounded-2xl bg-[#1877f2] py-2 text-sm font-extrabold text-white transition-colors hover:bg-[#166fe5]"
@@ -1138,7 +1138,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           <div className="mb-4 rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3 text-sm text-zinc-700">
             Copy/paste mode is enabled. AutoIndex does not call Facebook APIs and does not scrape live Marketplace data.
           </div>
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-xs font-bold text-zinc-500">Marketplace Analysis</div>
               <div className="mt-1 text-xl font-black text-zinc-900">Verify a Facebook Marketplace listing before you buy</div>
@@ -1147,7 +1147,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                 value using your inputs plus built-in valuation factors.
               </div>
             </div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-[#f5f7fb] px-3 py-1 text-xs font-extrabold text-zinc-800">
+            <span className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#dbe3ef] bg-[#f5f7fb] px-3 py-1 text-xs font-extrabold text-zinc-800 sm:w-auto sm:justify-start">
               <Sparkles className="h-4 w-4" /> Copy/Paste Verification
             </span>
           </div>
@@ -1283,7 +1283,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
 
           {analysis ? (
             <div className="mt-6 rounded-3xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-xs font-bold text-zinc-500">Results</div>
                   <div className="mt-1 text-lg font-black text-zinc-900">
@@ -1308,7 +1308,9 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                     </div>
                   ) : null}
                 </div>
-                <div className={`rounded-2xl border px-3 py-2 text-right ${label?.tone ?? 'border-[#dbe3ef]'}`}>
+                <div
+                  className={`w-full rounded-2xl border px-3 py-2 text-left sm:w-auto sm:text-right ${label?.tone ?? 'border-[#dbe3ef]'}`}
+                >
                   <div className="text-xs font-extrabold">Score</div>
                   <div className="text-2xl font-black">{analysis.score10.toFixed(1)}/10</div>
                   <div className="text-xs font-bold">{label?.label}</div>
@@ -2023,7 +2025,7 @@ export default function App() {
             currentDetail.vendor ? (
               <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3">
                 <div className="text-xs font-bold text-zinc-600">Leave vendor feedback</div>
-                <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <select
                     value={reviewRating}
                     onChange={(e) => setReviewRating(e.target.value)}
@@ -2073,7 +2075,7 @@ export default function App() {
               </div>
             ) : null}
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <button
                 onClick={() => {
                   handleCart(currentDetail.listing.id);
@@ -2159,7 +2161,7 @@ export default function App() {
 
       <Drawer open={authOpen} title={authMode === 'login' ? 'Login' : 'Create account'} onClose={() => setAuthOpen(false)}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               onClick={() => setAuthMode('login')}
               className={`rounded-xl py-2 text-xs font-extrabold ${
@@ -2249,22 +2251,22 @@ export default function App() {
 
       <header className="sticky top-0 z-40 border-b border-[#dbe3ef] bg-white/90 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4">
-          <div className="flex items-center justify-between gap-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 py-3 sm:gap-4">
             <button
-              className="flex items-center gap-3 text-left"
+              className="flex min-w-0 items-center gap-2 text-left sm:gap-3"
               onClick={() => {
                 setActiveTab('Valuation');
                 toast('Home');
               }}
             >
-              <img src={AUTO_INDEX_LOGO} alt="AutoIndex logo" className="h-10 w-auto rounded-xl" />
-              <div className="leading-tight">
-                <div className="text-lg font-extrabold tracking-tight">AutoIndex</div>
-                <div className="text-xs text-zinc-500">Parts pricing intelligence + marketplace</div>
+              <img src={AUTO_INDEX_LOGO} alt="AutoIndex logo" className="h-9 w-auto rounded-xl sm:h-10" />
+              <div className="min-w-0 leading-tight">
+                <div className="truncate text-base font-extrabold tracking-tight sm:text-lg">AutoIndex</div>
+                <div className="hidden text-xs text-zinc-500 sm:block">Parts pricing intelligence + marketplace</div>
               </div>
             </button>
 
-            <div className="hidden w-[420px] items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 shadow-sm md:flex">
+            <div className="hidden items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 shadow-sm md:flex md:w-[280px] lg:w-[420px]">
               <Search className="h-4 w-4 text-zinc-500" />
               <input
                 value={query}
@@ -2274,7 +2276,7 @@ export default function App() {
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 onClick={() => setVendorApplyOpen(true)}
                 className="hidden items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-sm font-extrabold hover:bg-[#f5f7fb] sm:inline-flex"
@@ -2291,9 +2293,9 @@ export default function App() {
 
               <button
                 onClick={() => setCartOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full bg-[#1877f2] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
+                className="inline-flex items-center gap-2 rounded-full bg-[#1877f2] px-3 py-2 text-sm font-extrabold text-white hover:bg-[#166fe5] sm:px-4"
               >
-                <ShoppingCart className="h-4 w-4" /> Cart{' '}
+                <ShoppingCart className="h-4 w-4" /> <span className="hidden sm:inline">Cart</span>{' '}
                 <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs">{cart.length}</span>
               </button>
 
@@ -2318,7 +2320,7 @@ export default function App() {
                     }}
                     className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
                   >
-                    <LogOut className="h-4 w-4" /> Logout
+                    <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Logout</span>
                   </button>
                 </>
               ) : (
@@ -2329,7 +2331,7 @@ export default function App() {
                   }}
                   className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
                 >
-                  <User2 className="h-4 w-4" /> Login / Sign up
+                  <User2 className="h-4 w-4" /> <span className="hidden sm:inline">Login / Sign up</span>
                 </button>
               )}
             </div>
@@ -2355,7 +2357,7 @@ export default function App() {
                   setActiveTab(t);
                   toast(`${t} opened`);
                 }}
-                className={`rounded-full border px-4 py-2 text-sm font-extrabold transition-colors ${
+                className={`shrink-0 rounded-full border px-4 py-2 text-sm font-extrabold transition-colors ${
                   activeTab === t
                     ? 'border-[#1877f2] bg-[#1877f2] text-white'
                     : 'border-[#dbe3ef] bg-white text-zinc-800 hover:bg-[#f5f7fb]'
@@ -2460,7 +2462,7 @@ export default function App() {
                         Build fair market value using part age, condition, availability, and market demand signals.
                       </div>
 
-                      <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                           <label className="text-xs font-bold text-zinc-600">Year</label>
                           <input
@@ -2530,7 +2532,7 @@ export default function App() {
                             {vehicleYear} {vehicleMake} {vehicleModel} • {zip}
                           </div>
                         </div>
-                        <div className="mt-3 grid grid-cols-3 gap-2">
+                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
                           <div className="rounded-2xl border border-[#dbe3ef] bg-white p-3">
                             <div className="text-xs font-bold text-zinc-500">Low</div>
                             <div className="text-lg font-black">{fmtMoney(fpvCalc.range.low)}</div>
@@ -2593,7 +2595,7 @@ export default function App() {
                                 <div className="mt-1 text-xs text-zinc-600">
                                   {String(v.category)} • {String(v.condition)}
                                 </div>
-                                <div className="mt-2 grid grid-cols-3 gap-2">
+                                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                                   <div className="rounded-xl border border-[#dbe3ef] bg-white p-2">
                                     <div className="text-[11px] font-bold text-zinc-500">Low</div>
                                     <div className="text-sm font-black">{fmtMoney(v.range.low)}</div>
