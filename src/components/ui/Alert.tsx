@@ -7,7 +7,7 @@ type AlertTone = 'error' | 'warn' | 'info' | 'success';
 const styles: Record<AlertTone, string> = {
   error: 'border-rose-200 bg-rose-50 text-rose-900',
   warn: 'border-amber-200 bg-amber-50 text-amber-900',
-  info: 'border-blue-200 bg-blue-50 text-blue-900',
+  info: 'border-[#dbe3ef] bg-[#e7f3ff] text-[#1b4f9c]',
   success: 'border-emerald-200 bg-emerald-50 text-emerald-900'
 };
 

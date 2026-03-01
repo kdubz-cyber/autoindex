@@ -4,11 +4,11 @@ import { cx } from '../../lib/cx';
 type Tone = 'neutral' | 'good' | 'warn' | 'danger' | 'info';
 
 const toneMap: Record<Tone, string> = {
-  neutral: 'bg-zinc-100 text-zinc-800 border-zinc-200',
+  neutral: 'bg-[#e7f3ff] text-zinc-800 border-[#dbe3ef]',
   good: 'bg-emerald-50 text-emerald-900 border-emerald-200',
   warn: 'bg-amber-50 text-amber-900 border-amber-200',
   danger: 'bg-rose-50 text-rose-900 border-rose-200',
-  info: 'bg-blue-50 text-blue-900 border-blue-200'
+  info: 'bg-[#e7f3ff] text-[#1b4f9c] border-[#dbe3ef]'
 };
 
 export function Badge({

@@ -22,7 +22,7 @@ export function Select({ id, label, options, error, hint, className, ...props }:
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
         className={cx(
-          'focus-ring w-full rounded-[var(--radius-input)] border bg-white px-3 py-2.5 text-base text-[var(--color-text)] outline-none disabled:cursor-not-allowed disabled:bg-zinc-100',
+          'focus-ring w-full rounded-[var(--radius-input)] border bg-white px-3 py-2.5 text-base text-[var(--color-text)] outline-none disabled:cursor-not-allowed disabled:bg-[#e7f3ff]',
           error ? 'border-rose-300' : 'border-[var(--color-border)]',
           className
         )}

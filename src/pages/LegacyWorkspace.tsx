@@ -795,9 +795,9 @@ function SectionImage({ kind }: { kind: 'hero' | 'learn' | 'vendors' | Category 
     >
       <defs>
         <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#ef4444" />
-          <stop offset="0.55" stopColor="#111827" />
-          <stop offset="1" stopColor="#0b1220" />
+          <stop offset="0" stopColor="#1877f2" />
+          <stop offset="0.55" stopColor="#166fe5" />
+          <stop offset="1" stopColor="#0f4fb8" />
         </linearGradient>
       </defs>
       <rect width="800" height="450" fill="url(#g)" />
@@ -821,7 +821,7 @@ function SectionImage({ kind }: { kind: 'hero' | 'learn' | 'vendors' | Category 
 
 function Pill({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700 shadow-sm">
+    <span className="inline-flex items-center rounded-full border border-[#dbe3ef] bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700 shadow-sm">
       {children}
     </span>
   );
@@ -829,8 +829,8 @@ function Pill({ children }: { children: ReactNode }) {
 
 function Stat({ icon: Icon, label, value }: { icon: typeof Building2; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="grid h-10 w-10 place-items-center rounded-2xl bg-zinc-100">
+    <div className="flex items-center gap-3 rounded-2xl border border-[#dbe3ef] bg-white p-4 shadow-sm">
+      <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#e7f3ff]">
         <Icon className="h-5 w-5 text-zinc-700" />
       </div>
       <div>
@@ -898,9 +898,9 @@ function Drawer({ open, title, onClose, children }: DrawerProps) {
         role="dialog"
         aria-label={title}
       >
-        <div className="flex items-center justify-between border-b border-zinc-200 p-4">
+        <div className="flex items-center justify-between border-b border-[#dbe3ef] p-4">
           <div className="text-base font-black">{title}</div>
-          <button onClick={onClose} className="rounded-xl p-2 hover:bg-zinc-100" aria-label="Close">
+          <button onClick={onClose} className="rounded-xl p-2 hover:bg-[#e7f3ff]" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -918,7 +918,7 @@ function Toast({ msg, onClose }: { msg: string; onClose: () => void }) {
 
   return (
     <div className="fixed bottom-5 left-1/2 z-[60] -translate-x-1/2">
-      <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold text-zinc-900 shadow-lg">
+      <div className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-4 py-2 text-sm font-extrabold text-zinc-900 shadow-lg">
         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
         {msg}
       </div>
@@ -939,9 +939,9 @@ function ListingCard({ listing, vendor, onSave, onCart, onOpen }: ListingCardPro
   const dealPct = Math.round(deal * 100);
 
   return (
-    <div className="group overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+    <div className="group overflow-hidden rounded-3xl border border-[#dbe3ef] bg-white shadow-sm transition-shadow hover:shadow-md">
       <button className="block w-full text-left" onClick={() => onOpen(listing.id)}>
-        <div className="aspect-[16/9] bg-zinc-100">
+        <div className="aspect-[16/9] bg-[#e7f3ff]">
           <SectionImage kind={listing.category} />
         </div>
       </button>
@@ -957,7 +957,7 @@ function ListingCard({ listing, vendor, onSave, onCart, onOpen }: ListingCardPro
             <div className="mt-1 text-xs text-zinc-600">{listing.fitment}</div>
           </div>
           {listing.badge ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] font-bold text-zinc-800">
+            <span className="inline-flex items-center gap-1 rounded-full border border-[#dbe3ef] bg-[#f5f7fb] px-2 py-1 text-[11px] font-bold text-zinc-800">
               <BadgeCheck className="h-3.5 w-3.5" /> {listing.badge}
             </span>
           ) : null}
@@ -1004,13 +1004,13 @@ function ListingCard({ listing, vendor, onSave, onCart, onOpen }: ListingCardPro
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button
             onClick={() => onCart(listing.id)}
-            className="rounded-2xl bg-zinc-900 py-2 text-sm font-extrabold text-white transition-colors hover:bg-zinc-800"
+            className="rounded-2xl bg-[#1877f2] py-2 text-sm font-extrabold text-white transition-colors hover:bg-[#166fe5]"
           >
             Add to cart
           </button>
           <button
             onClick={() => onSave(listing.id)}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white py-2 text-sm font-extrabold text-zinc-900 transition-colors hover:bg-zinc-50"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#dbe3ef] bg-white py-2 text-sm font-extrabold text-zinc-900 transition-colors hover:bg-[#f5f7fb]"
           >
             <Heart className="h-4 w-4" /> Save
           </button>
@@ -1360,8 +1360,8 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm lg:col-span-2">
-        <div className="aspect-[16/9] bg-zinc-100">
+      <div className="overflow-hidden rounded-3xl border border-[#dbe3ef] bg-white shadow-sm lg:col-span-2">
+        <div className="aspect-[16/9] bg-[#e7f3ff]">
           <SectionImage kind="hero" />
         </div>
         <div className="p-5">
@@ -1371,7 +1371,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
             </div>
           ) : null}
           {!backendStatus ? (
-            <div className="mb-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
+            <div className="mb-4 rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3 text-sm text-zinc-700">
               Running in demo mode on GitHub Pages. Marketplace analysis/search uses local fallback signals until
               backend API is connected.
             </div>
@@ -1386,7 +1386,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                 and rate fair market value from real signals.
               </div>
             </div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-extrabold text-zinc-800">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-[#f5f7fb] px-3 py-1 text-xs font-extrabold text-zinc-800">
               <Sparkles className="h-4 w-4" /> Intelligence Engine
             </span>
           </div>
@@ -1397,7 +1397,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value as Category)}
-                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -1412,7 +1412,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
               <select
                 value={selectedCondition}
                 onChange={(e) => setSelectedCondition(e.target.value as Condition)}
-                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
               >
                 <option value="Used">Used</option>
                 <option value="Aftermarket">Aftermarket</option>
@@ -1422,7 +1422,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
 
             <div>
               <label className="text-xs font-bold text-zinc-600">Part title (optional)</label>
-              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2">
+              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2">
                 <Wrench className="h-4 w-4 text-zinc-500" />
                 <input
                   value={partTitle}
@@ -1435,7 +1435,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
 
             <div>
               <label className="text-xs font-bold text-zinc-600">Ask price (optional)</label>
-              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2">
+              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2">
                 <Tag className="h-4 w-4 text-zinc-500" />
                 <input
                   value={askPrice}
@@ -1448,7 +1448,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
 
             <div>
               <label className="text-xs font-bold text-zinc-600">Part year (optional)</label>
-              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2">
+              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2">
                 <ClipboardList className="h-4 w-4 text-zinc-500" />
                 <input
                   value={partYear}
@@ -1463,7 +1463,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
             {selectedCategory === 'Engine' ? (
               <div>
                 <label className="text-xs font-bold text-zinc-600">Engine miles (optional)</label>
-                <div className="mt-1 flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2">
+                <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2">
                   <Gauge className="h-4 w-4 text-zinc-500" />
                   <input
                     value={engineMiles}
@@ -1480,7 +1480,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
               <label className="text-xs font-bold text-zinc-600">Facebook Marketplace link</label>
-              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2">
+              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2">
                 <ExternalLink className="h-4 w-4 text-zinc-500" />
                 <input
                   value={link}
@@ -1496,7 +1496,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
 
             <div>
               <label className="text-xs font-bold text-zinc-600">Buyer ZIP (optional)</label>
-              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2">
+              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2">
                 <MapPin className="h-4 w-4 text-zinc-500" />
                 <input
                   value={buyerZip}
@@ -1513,7 +1513,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
               disabled={!canAnalyse || loading}
               onClick={run}
               className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-extrabold text-white transition-colors ${
-                canAnalyse && !loading ? 'bg-zinc-900 hover:bg-zinc-800' : 'cursor-not-allowed bg-zinc-300'
+                canAnalyse && !loading ? 'bg-[#1877f2] hover:bg-[#166fe5]' : 'cursor-not-allowed bg-[#b8d4fb]'
               }`}
             >
               {loading ? 'Analyzing...' : 'Run analysis'} <ArrowRight className="h-4 w-4" />
@@ -1522,7 +1522,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
           {apiError ? <div className="mt-3 text-sm font-semibold text-rose-700">{apiError}</div> : null}
 
           {analysis ? (
-            <div className="mt-6 rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="mt-6 rounded-3xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-bold text-zinc-500">Results</div>
@@ -1553,7 +1553,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                     </div>
                   ) : null}
                 </div>
-                <div className={`rounded-2xl border px-3 py-2 text-right ${label?.tone ?? 'border-zinc-200'}`}>
+                <div className={`rounded-2xl border px-3 py-2 text-right ${label?.tone ?? 'border-[#dbe3ef]'}`}>
                   <div className="text-xs font-extrabold">Score</div>
                   <div className="text-2xl font-black">{analysis.score10.toFixed(1)}/10</div>
                   <div className="text-xs font-bold">{label?.label}</div>
@@ -1567,40 +1567,40 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
                   <Tag className="h-4 w-4" /> Price signal: {analysis.valuation.priceSignal}
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
                   <TrendingUp className="h-4 w-4" /> Est. market: {fmtMoney(analysis.valuation.marketRange.low)}–
                   {fmtMoney(analysis.valuation.marketRange.high)}
                 </span>
                 {buyerZip ? (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
                     <MapPin className="h-4 w-4" /> Buyer ZIP: {buyerZip}
                   </span>
                 ) : null}
                 {analysis.listing.locationText ? (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
                     <MapPin className="h-4 w-4" /> Listing area: {analysis.listing.locationText}
                   </span>
                 ) : null}
                 {typeof analysis.listing.dealerOriginalPrice === 'number' ? (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
                     <Tag className="h-4 w-4" /> Dealer/original: {fmtMoney(analysis.listing.dealerOriginalPrice)}
                   </span>
                 ) : null}
                 {analysis.listing.rarityProfile ? (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
                     <Sparkles className="h-4 w-4" /> Rarity: {availabilityLabelFromKey(analysis.listing.rarityProfile)}
                   </span>
                 ) : null}
                 {typeof analysis.listing.partYear === 'number' ? (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
                     <ClipboardList className="h-4 w-4" /> Part year: {analysis.listing.partYear}
                   </span>
                 ) : null}
                 {analysis.partCategory === 'Engine' && typeof analysis.listing.engineMiles === 'number' ? (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-1 text-xs font-extrabold text-zinc-800">
                     <Gauge className="h-4 w-4" /> Engine miles: {analysis.listing.engineMiles.toLocaleString()}
                   </span>
                 ) : null}
@@ -1623,7 +1623,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
             </div>
           ) : null}
 
-          <div className="mt-6 rounded-3xl border border-zinc-200 bg-white p-4">
+          <div className="mt-6 rounded-3xl border border-[#dbe3ef] bg-white p-4">
             <div className="text-xs font-bold text-zinc-500">Facebook Marketplace Search</div>
             <div className="mt-1 text-lg font-black text-zinc-900">Search listings and rate FMV at scale</div>
             <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -1632,13 +1632,13 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                  className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                   placeholder="e.g., brembo brakes civic si"
                 />
               </div>
               <div>
                 <label className="text-xs font-bold text-zinc-600">Condition profile</label>
-                <div className="mt-1 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-semibold text-zinc-700">
+                <div className="mt-1 rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] px-3 py-2 text-sm font-semibold text-zinc-700">
                   {selectedCondition}
                 </div>
               </div>
@@ -1647,7 +1647,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                 <input
                   value={searchPriceMin}
                   onChange={(e) => setSearchPriceMin(e.target.value)}
-                  className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                  className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                   placeholder="100"
                 />
               </div>
@@ -1656,7 +1656,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                 <input
                   value={searchPriceMax}
                   onChange={(e) => setSearchPriceMax(e.target.value)}
-                  className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                  className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                   placeholder="1500"
                 />
               </div>
@@ -1665,7 +1665,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                   disabled={!canSearch || searchLoading}
                   onClick={runFacebookSearch}
                   className={`w-full rounded-2xl px-4 py-2 text-sm font-extrabold text-white ${
-                    canSearch && !searchLoading ? 'bg-zinc-900 hover:bg-zinc-800' : 'cursor-not-allowed bg-zinc-300'
+                    canSearch && !searchLoading ? 'bg-[#1877f2] hover:bg-[#166fe5]' : 'cursor-not-allowed bg-[#b8d4fb]'
                   }`}
                 >
                   {searchLoading ? 'Searching...' : 'Search Marketplace'}
@@ -1678,7 +1678,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                 {searchResults.map((item) => {
                   const rowLabel = scoreToLabel(item.intelligence.score10);
                   return (
-                    <div key={item.id} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                    <div key={item.id} className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-sm font-black text-zinc-900">{item.title}</div>
@@ -1724,8 +1724,8 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
-        <div className="aspect-[16/10] bg-zinc-100">
+      <div className="overflow-hidden rounded-3xl border border-[#dbe3ef] bg-white shadow-sm">
+        <div className="aspect-[16/10] bg-[#e7f3ff]">
           <SectionImage kind="learn" />
         </div>
         <div className="p-5">
@@ -1740,7 +1740,7 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
               window.open('https://www.facebook.com/marketplace/', '_blank', 'noopener,noreferrer');
               toast('Opened Facebook Marketplace');
             }}
-            className="mt-4 w-full rounded-2xl bg-zinc-900 py-2.5 text-sm font-extrabold text-white transition-colors hover:bg-zinc-800"
+            className="mt-4 w-full rounded-2xl bg-[#1877f2] py-2.5 text-sm font-extrabold text-white transition-colors hover:bg-[#166fe5]"
           >
             Open Facebook Marketplace
           </button>
@@ -2195,18 +2195,18 @@ export default function App() {
   if (session?.role === 'vendor' || session?.role === 'admin') navTabs.push('Dashboard');
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900">
+    <div className="min-h-screen bg-[#f0f2f5] text-zinc-900">
       {toastMsg ? <Toast msg={toastMsg} onClose={() => setToastMsg(null)} /> : null}
 
       <Drawer open={cartOpen} title={`Cart (${cartItems.length})`} onClose={() => setCartOpen(false)}>
         {cartItems.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+          <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4 text-sm text-zinc-700">
             Your cart is empty. Add a part to test checkout flow.
           </div>
         ) : (
           <div className="space-y-3">
             {cartItems.map((l) => (
-              <div key={l.id} className="rounded-2xl border border-zinc-200 bg-white p-3">
+              <div key={l.id} className="rounded-2xl border border-[#dbe3ef] bg-white p-3">
                 <div className="text-sm font-black">{l.title}</div>
                 <div className="text-xs text-zinc-600">
                   {l.category} • {l.condition} • {l.brand}
@@ -2218,7 +2218,7 @@ export default function App() {
                       setCart((c) => c.filter((x) => x !== l.id));
                       toast('Removed from cart');
                     }}
-                    className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-extrabold hover:bg-zinc-50"
+                    className="rounded-xl border border-[#dbe3ef] bg-white px-3 py-1.5 text-xs font-extrabold hover:bg-[#f5f7fb]"
                   >
                     Remove
                   </button>
@@ -2226,7 +2226,7 @@ export default function App() {
               </div>
             ))}
 
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+            <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3">
               <div className="flex items-center justify-between text-sm font-black">
                 <span>Total</span>
                 <span>{fmtMoney(cartTotal)}</span>
@@ -2262,7 +2262,7 @@ export default function App() {
                   toast('Checkout completed');
                   setCart([]);
                 }}
-                className="mt-3 w-full rounded-2xl bg-zinc-900 py-2.5 text-sm font-extrabold text-white hover:bg-zinc-800"
+                className="mt-3 w-full rounded-2xl bg-[#1877f2] py-2.5 text-sm font-extrabold text-white hover:bg-[#166fe5]"
               >
                 Checkout
               </button>
@@ -2274,13 +2274,13 @@ export default function App() {
 
       <Drawer open={savedOpen} title={`Saved (${savedItems.length})`} onClose={() => setSavedOpen(false)}>
         {savedItems.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+          <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4 text-sm text-zinc-700">
             Nothing saved yet. Tap Save on a listing.
           </div>
         ) : (
           <div className="space-y-3">
             {savedItems.map((l) => (
-              <div key={l.id} className="rounded-2xl border border-zinc-200 bg-white p-3">
+              <div key={l.id} className="rounded-2xl border border-[#dbe3ef] bg-white p-3">
                 <div className="text-sm font-black">{l.title}</div>
                 <div className="text-xs text-zinc-600">
                   {l.category} • {l.condition} • {l.brand}
@@ -2288,7 +2288,7 @@ export default function App() {
                 <div className="mt-2 flex items-center justify-between">
                   <button
                     onClick={() => openDetail(l.id)}
-                    className="rounded-xl bg-zinc-900 px-3 py-1.5 text-xs font-extrabold text-white hover:bg-zinc-800"
+                    className="rounded-xl bg-[#1877f2] px-3 py-1.5 text-xs font-extrabold text-white hover:bg-[#166fe5]"
                   >
                     View
                   </button>
@@ -2297,7 +2297,7 @@ export default function App() {
                       setSaved((s) => s.filter((x) => x !== l.id));
                       toast('Removed from saved');
                     }}
-                    className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-extrabold hover:bg-zinc-50"
+                    className="rounded-xl border border-[#dbe3ef] bg-white px-3 py-1.5 text-xs font-extrabold hover:bg-[#f5f7fb]"
                   >
                     Remove
                   </button>
@@ -2311,7 +2311,7 @@ export default function App() {
       <Drawer open={detailOpen} title="Listing" onClose={() => setDetailOpen(false)}>
         {currentDetail?.listing ? (
           <div className="space-y-4">
-            <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100">
+            <div className="overflow-hidden rounded-2xl border border-[#dbe3ef] bg-[#e7f3ff]">
               <SectionImage kind={currentDetail.listing.category} />
             </div>
             <div>
@@ -2322,7 +2322,7 @@ export default function App() {
               <div className="mt-1 text-sm text-zinc-600">Fitment: {currentDetail.listing.fitment}</div>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+            <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-black">{fmtMoney(currentDetail.listing.price)}</div>
                 <div className="inline-flex items-center gap-2">
@@ -2336,7 +2336,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white p-3">
+            <div className="rounded-2xl border border-[#dbe3ef] bg-white p-3">
               <div className="text-xs font-bold text-zinc-500">
                 {currentDetail.listing.sellerType === 'individual' ? 'Individual seller' : 'Vendor'}
               </div>
@@ -2354,7 +2354,7 @@ export default function App() {
                   </div>
                 </div>
                 {currentDetail.vendor?.verified ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] font-bold text-zinc-800">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[#dbe3ef] bg-[#f5f7fb] px-2 py-1 text-[11px] font-bold text-zinc-800">
                     <BadgeCheck className="h-3.5 w-3.5" /> Verified
                   </span>
                 ) : null}
@@ -2364,13 +2364,13 @@ export default function App() {
             {session?.role === 'individual' &&
             currentDetail.listing.sellerType !== 'individual' &&
             currentDetail.vendor ? (
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+              <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3">
                 <div className="text-xs font-bold text-zinc-600">Leave vendor feedback</div>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <select
                     value={reviewRating}
                     onChange={(e) => setReviewRating(e.target.value)}
-                    className="rounded-xl border border-zinc-200 bg-white px-2 py-1.5 text-sm outline-none"
+                    className="rounded-xl border border-[#dbe3ef] bg-white px-2 py-1.5 text-sm outline-none"
                   >
                     <option value="5">5 Stars</option>
                     <option value="4">4 Stars</option>
@@ -2401,7 +2401,7 @@ export default function App() {
                       setReviewRating('5');
                       toast('Review submitted');
                     }}
-                    className="rounded-xl bg-zinc-900 px-2 py-1.5 text-sm font-extrabold text-white hover:bg-zinc-800"
+                    className="rounded-xl bg-[#1877f2] px-2 py-1.5 text-sm font-extrabold text-white hover:bg-[#166fe5]"
                   >
                     Submit review
                   </button>
@@ -2409,7 +2409,7 @@ export default function App() {
                 <textarea
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                  className="mt-2 w-full rounded-xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                   rows={3}
                   placeholder="Tell this vendor how your buying experience went"
                 />
@@ -2422,7 +2422,7 @@ export default function App() {
                   handleCart(currentDetail.listing.id);
                   setCartOpen(true);
                 }}
-                className="rounded-2xl bg-zinc-900 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                className="rounded-2xl bg-[#1877f2] py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
               >
                 Add to cart
               </button>
@@ -2431,20 +2431,20 @@ export default function App() {
                   handleSave(currentDetail.listing.id);
                   setSavedOpen(true);
                 }}
-                className="rounded-2xl border border-zinc-200 bg-white py-2 text-sm font-extrabold hover:bg-zinc-50"
+                className="rounded-2xl border border-[#dbe3ef] bg-white py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
               >
                 Save
               </button>
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">Select a listing.</div>
+          <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4 text-sm text-zinc-700">Select a listing.</div>
         )}
       </Drawer>
 
       <Drawer open={vendorApplyOpen} title="Become a vendor" onClose={() => setVendorApplyOpen(false)}>
         <div className="space-y-4">
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
+          <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4 text-sm text-zinc-700">
             Submit your business details and complete signup as a Vendor account to access the vendor dashboard.
           </div>
           <div className="space-y-3">
@@ -2453,7 +2453,7 @@ export default function App() {
               <input
                 value={vendorApplyName}
                 onChange={(e) => setVendorApplyName(e.target.value)}
-                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                 placeholder="Your shop name"
               />
             </div>
@@ -2462,7 +2462,7 @@ export default function App() {
               <input
                 value={vendorApplyLocation}
                 onChange={(e) => setVendorApplyLocation(e.target.value)}
-                className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                 placeholder="City, State"
               />
             </div>
@@ -2492,7 +2492,7 @@ export default function App() {
                 setVendorApplyName('');
                 setVendorApplyLocation('');
               }}
-              className="w-full rounded-2xl bg-zinc-900 py-2.5 text-sm font-extrabold text-white hover:bg-zinc-800"
+              className="w-full rounded-2xl bg-[#1877f2] py-2.5 text-sm font-extrabold text-white hover:bg-[#166fe5]"
             >
               Continue
             </button>
@@ -2506,7 +2506,7 @@ export default function App() {
             <button
               onClick={() => setAuthMode('login')}
               className={`rounded-xl py-2 text-xs font-extrabold ${
-                authMode === 'login' ? 'bg-zinc-900 text-white' : 'border border-zinc-200 bg-white'
+                authMode === 'login' ? 'bg-[#1877f2] text-white' : 'border border-[#dbe3ef] bg-white'
               }`}
             >
               Login
@@ -2514,7 +2514,7 @@ export default function App() {
             <button
               onClick={() => setAuthMode('signup')}
               className={`rounded-xl py-2 text-xs font-extrabold ${
-                authMode === 'signup' ? 'bg-zinc-900 text-white' : 'border border-zinc-200 bg-white'
+                authMode === 'signup' ? 'bg-[#1877f2] text-white' : 'border border-[#dbe3ef] bg-white'
               }`}
             >
               Sign up
@@ -2525,7 +2525,7 @@ export default function App() {
             <input
               value={authUsername}
               onChange={(e) => setAuthUsername(e.target.value)}
-              className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+              className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
               placeholder="username"
             />
           </div>
@@ -2535,7 +2535,7 @@ export default function App() {
               type="password"
               value={authPassword}
               onChange={(e) => setAuthPassword(e.target.value)}
-              className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+              className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
               placeholder="password"
             />
           </div>
@@ -2546,7 +2546,7 @@ export default function App() {
                 <select
                   value={authRole}
                   onChange={(e) => setAuthRole(e.target.value as Exclude<UserRole, 'admin'>)}
-                  className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                  className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                 >
                   <option value="individual">Individual User</option>
                   <option value="vendor">Vendor</option>
@@ -2559,7 +2559,7 @@ export default function App() {
                     <input
                       value={authVendorName}
                       onChange={(e) => setAuthVendorName(e.target.value)}
-                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                       placeholder="Shop name"
                     />
                   </div>
@@ -2568,7 +2568,7 @@ export default function App() {
                     <input
                       value={authVendorLocation}
                       onChange={(e) => setAuthVendorLocation(e.target.value)}
-                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                       placeholder="City, State"
                     />
                   </div>
@@ -2578,11 +2578,11 @@ export default function App() {
           ) : null}
           <button
             onClick={authMode === 'login' ? login : signup}
-            className="w-full rounded-2xl bg-zinc-900 py-2.5 text-sm font-extrabold text-white hover:bg-zinc-800"
+            className="w-full rounded-2xl bg-[#1877f2] py-2.5 text-sm font-extrabold text-white hover:bg-[#166fe5]"
           >
             {authMode === 'login' ? 'Login' : 'Create account'}
           </button>
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600">
+          <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3 text-xs text-zinc-600">
             {HAS_API_BASE
               ? `Use your account credentials to continue. Password minimum: ${MIN_PASSWORD_LENGTH} characters.`
               : `Template mode active: account data is stored in this browser only. Password minimum: ${MIN_PASSWORD_LENGTH} characters.`}
@@ -2590,7 +2590,7 @@ export default function App() {
         </div>
       </Drawer>
 
-      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-[#dbe3ef] bg-white/90 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4">
           <div className="flex items-center justify-between gap-4 py-3">
             <button
@@ -2607,7 +2607,7 @@ export default function App() {
               </div>
             </button>
 
-            <div className="hidden w-[420px] items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 shadow-sm md:flex">
+            <div className="hidden w-[420px] items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 shadow-sm md:flex">
               <Search className="h-4 w-4 text-zinc-500" />
               <input
                 value={query}
@@ -2620,21 +2620,21 @@ export default function App() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setVendorApplyOpen(true)}
-                className="hidden items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-sm font-extrabold hover:bg-zinc-50 sm:inline-flex"
+                className="hidden items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-sm font-extrabold hover:bg-[#f5f7fb] sm:inline-flex"
               >
                 <Store className="h-4 w-4" /> Become a vendor
               </button>
 
               <button
                 onClick={() => setSavedOpen(true)}
-                className="hidden items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-sm font-extrabold hover:bg-zinc-50 sm:inline-flex"
+                className="hidden items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-sm font-extrabold hover:bg-[#f5f7fb] sm:inline-flex"
               >
-                <Heart className="h-4 w-4" /> Saved <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs">{saved.length}</span>
+                <Heart className="h-4 w-4" /> Saved <span className="rounded-full bg-[#e7f3ff] px-2 py-0.5 text-xs">{saved.length}</span>
               </button>
 
               <button
                 onClick={() => setCartOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                className="inline-flex items-center gap-2 rounded-full bg-[#1877f2] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
               >
                 <ShoppingCart className="h-4 w-4" /> Cart{' '}
                 <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs">{cart.length}</span>
@@ -2642,7 +2642,7 @@ export default function App() {
 
               {session ? (
                 <>
-                  <span className="hidden items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-xs font-extrabold text-zinc-700 md:inline-flex">
+                  <span className="hidden items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-xs font-extrabold text-zinc-700 md:inline-flex">
                     <User2 className="h-4 w-4" /> {session.username} ({session.role})
                   </span>
                   <button
@@ -2659,7 +2659,7 @@ export default function App() {
                       setActiveTab('Valuation');
                       toast('Logged out');
                     }}
-                    className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-sm font-extrabold hover:bg-zinc-50"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
                   >
                     <LogOut className="h-4 w-4" /> Logout
                   </button>
@@ -2670,7 +2670,7 @@ export default function App() {
                     setAuthMode('login');
                     setAuthOpen(true);
                   }}
-                  className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-sm font-extrabold hover:bg-zinc-50"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
                 >
                   <User2 className="h-4 w-4" /> Login / Sign up
                 </button>
@@ -2679,7 +2679,7 @@ export default function App() {
           </div>
 
           <div className="pb-3 md:hidden">
-            <div className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2 shadow-sm">
+            <div className="flex items-center gap-2 rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 shadow-sm">
               <Search className="h-4 w-4 text-zinc-500" />
               <input
                 value={query}
@@ -2700,8 +2700,8 @@ export default function App() {
                 }}
                 className={`rounded-full border px-4 py-2 text-sm font-extrabold transition-colors ${
                   activeTab === t
-                    ? 'border-zinc-900 bg-zinc-900 text-white'
-                    : 'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50'
+                    ? 'border-[#1877f2] bg-[#1877f2] text-white'
+                    : 'border-[#dbe3ef] bg-white text-zinc-800 hover:bg-[#f5f7fb]'
                 }`}
               >
                 {t}
@@ -2735,7 +2735,7 @@ export default function App() {
       <main className="mx-auto max-w-7xl px-4 py-6">
         {activeTab === 'Valuation' ? (
           <>
-            <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-bold text-zinc-500">Homepage Feature</div>
@@ -2762,7 +2762,7 @@ export default function App() {
                       setActiveTab('Sell');
                       toast('Sell tools opened');
                     }}
-                    className="rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                    className="rounded-2xl bg-[#1877f2] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
                   >
                     {session?.role === 'individual' ? 'Start buying and selling' : 'Create Individual account'}
                   </button>
@@ -2773,7 +2773,7 @@ export default function App() {
                         setAuthOpen(true);
                         toast('Login to buy or sell');
                       }}
-                      className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold hover:bg-zinc-50"
+                      className="rounded-2xl border border-[#dbe3ef] bg-white px-4 py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
                     >
                       Login
                     </button>
@@ -2786,8 +2786,8 @@ export default function App() {
               <MarketplaceAnalysisPanel toast={toast} />
             </div>
 
-            <details className="mt-6 overflow-hidden rounded-[32px] border border-zinc-200 bg-white shadow-sm">
-              <summary className="cursor-pointer list-none border-b border-zinc-200 bg-zinc-50 px-5 py-4 text-sm font-extrabold text-zinc-800">
+            <details className="mt-6 overflow-hidden rounded-[32px] border border-[#dbe3ef] bg-white shadow-sm">
+              <summary className="cursor-pointer list-none border-b border-[#dbe3ef] bg-[#f5f7fb] px-5 py-4 text-sm font-extrabold text-zinc-800">
                 Advanced: Legacy AutoIndex Valuation + On-platform Listings
               </summary>
               <div className="p-0">
@@ -2809,7 +2809,7 @@ export default function App() {
                           <input
                             value={vehicleYear}
                             onChange={(e) => setVehicleYear(e.target.value)}
-                            className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                            className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                           />
                         </div>
                         <div>
@@ -2817,7 +2817,7 @@ export default function App() {
                           <input
                             value={zip}
                             onChange={(e) => setZip(e.target.value)}
-                            className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                            className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                           />
                         </div>
                         <div>
@@ -2825,7 +2825,7 @@ export default function App() {
                           <input
                             value={vehicleMake}
                             onChange={(e) => setVehicleMake(e.target.value)}
-                            className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                            className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                           />
                         </div>
                         <div>
@@ -2833,7 +2833,7 @@ export default function App() {
                           <input
                             value={vehicleModel}
                             onChange={(e) => setVehicleModel(e.target.value)}
-                            className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                            className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                           />
                         </div>
                         <div>
@@ -2841,7 +2841,7 @@ export default function App() {
                           <select
                             value={category}
                             onChange={(e) => setCategory(e.target.value as Category | 'All')}
-                            className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                            className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                           >
                             <option value="All">All</option>
                             {CATEGORIES.map((c) => (
@@ -2856,7 +2856,7 @@ export default function App() {
                           <select
                             value={condition}
                             onChange={(e) => setCondition(e.target.value as Condition | 'All')}
-                            className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                            className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                           >
                             <option value="All">All</option>
                             <option value="New">New</option>
@@ -2866,7 +2866,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="mt-4 rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
+                      <div className="mt-4 rounded-3xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
                         <div className="flex items-center justify-between">
                           <div className="text-sm font-extrabold">AutoIndex market range</div>
                           <div className="text-xs font-bold text-zinc-500">
@@ -2874,15 +2874,15 @@ export default function App() {
                           </div>
                         </div>
                         <div className="mt-3 grid grid-cols-3 gap-2">
-                          <div className="rounded-2xl border border-zinc-200 bg-white p-3">
+                          <div className="rounded-2xl border border-[#dbe3ef] bg-white p-3">
                             <div className="text-xs font-bold text-zinc-500">Low</div>
                             <div className="text-lg font-black">{fmtMoney(fpvCalc.range.low)}</div>
                           </div>
-                          <div className="rounded-2xl border border-zinc-200 bg-white p-3">
+                          <div className="rounded-2xl border border-[#dbe3ef] bg-white p-3">
                             <div className="text-xs font-bold text-zinc-500">Typical</div>
                             <div className="text-lg font-black">{fmtMoney(fpvCalc.range.mid)}</div>
                           </div>
-                          <div className="rounded-2xl border border-zinc-200 bg-white p-3">
+                          <div className="rounded-2xl border border-[#dbe3ef] bg-white p-3">
                             <div className="text-xs font-bold text-zinc-500">High</div>
                             <div className="text-lg font-black">{fmtMoney(fpvCalc.range.high)}</div>
                           </div>
@@ -2895,26 +2895,26 @@ export default function App() {
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         <button
                           onClick={browseMatches}
-                          className="inline-flex items-center gap-2 rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                          className="inline-flex items-center gap-2 rounded-2xl bg-[#1877f2] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
                         >
                           Browse matches <ArrowRight className="h-4 w-4" />
                         </button>
                         <button
                           onClick={saveValuation}
-                          className="inline-flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold hover:bg-zinc-50"
+                          className="inline-flex items-center gap-2 rounded-2xl border border-[#dbe3ef] bg-white px-4 py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
                         >
                           Save valuation <ClipboardList className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => setSavedOpen(true)}
-                          className="inline-flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold hover:bg-zinc-50"
+                          className="inline-flex items-center gap-2 rounded-2xl border border-[#dbe3ef] bg-white px-4 py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
                         >
                           Open saved <Heart className="h-4 w-4" />
                         </button>
                       </div>
 
                       {valuations.length > 0 ? (
-                        <div className="mt-4 rounded-3xl border border-zinc-200 bg-white p-4">
+                        <div className="mt-4 rounded-3xl border border-[#dbe3ef] bg-white p-4">
                           <div className="flex items-center justify-between">
                             <div className="text-sm font-black">Saved valuations</div>
                             <button
@@ -2922,14 +2922,14 @@ export default function App() {
                                 setValuations([]);
                                 toast('Cleared valuations');
                               }}
-                              className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-extrabold hover:bg-zinc-50"
+                              className="rounded-xl border border-[#dbe3ef] bg-white px-3 py-1.5 text-xs font-extrabold hover:bg-[#f5f7fb]"
                             >
                               Clear
                             </button>
                           </div>
                           <div className="mt-3 space-y-2">
                             {valuations.slice(0, 3).map((v) => (
-                              <div key={v.ts} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                              <div key={v.ts} className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3">
                                 <div className="text-xs font-bold text-zinc-600">
                                   {v.year} {v.make} {v.model} • {v.zip}
                                 </div>
@@ -2937,15 +2937,15 @@ export default function App() {
                                   {String(v.category)} • {String(v.condition)}
                                 </div>
                                 <div className="mt-2 grid grid-cols-3 gap-2">
-                                  <div className="rounded-xl border border-zinc-200 bg-white p-2">
+                                  <div className="rounded-xl border border-[#dbe3ef] bg-white p-2">
                                     <div className="text-[11px] font-bold text-zinc-500">Low</div>
                                     <div className="text-sm font-black">{fmtMoney(v.range.low)}</div>
                                   </div>
-                                  <div className="rounded-xl border border-zinc-200 bg-white p-2">
+                                  <div className="rounded-xl border border-[#dbe3ef] bg-white p-2">
                                     <div className="text-[11px] font-bold text-zinc-500">Typical</div>
                                     <div className="text-sm font-black">{fmtMoney(v.range.mid)}</div>
                                   </div>
-                                  <div className="rounded-xl border border-zinc-200 bg-white p-2">
+                                  <div className="rounded-xl border border-[#dbe3ef] bg-white p-2">
                                     <div className="text-[11px] font-bold text-zinc-500">High</div>
                                     <div className="text-sm font-black">{fmtMoney(v.range.high)}</div>
                                   </div>
@@ -2968,7 +2968,7 @@ export default function App() {
                   toast('Category: All');
                 }}
                 className={`rounded-full border px-4 py-2 text-sm font-extrabold ${
-                  category === 'All' ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-200 bg-white hover:bg-zinc-50'
+                  category === 'All' ? 'border-[#1877f2] bg-[#1877f2] text-white' : 'border-[#dbe3ef] bg-white hover:bg-[#f5f7fb]'
                 }`}
               >
                 All
@@ -2981,7 +2981,7 @@ export default function App() {
                     toast(`Category: ${c}`);
                   }}
                   className={`rounded-full border px-4 py-2 text-sm font-extrabold ${
-                    category === c ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-200 bg-white hover:bg-zinc-50'
+                    category === c ? 'border-[#1877f2] bg-[#1877f2] text-white' : 'border-[#dbe3ef] bg-white hover:bg-[#f5f7fb]'
                   }`}
                 >
                   {c}
@@ -2990,7 +2990,7 @@ export default function App() {
             </div>
 
             <div ref={listingsRef} className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-4">
-              <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
+              <div className="rounded-3xl border border-[#dbe3ef] bg-white p-4 shadow-sm">
                 <div className="flex items-center gap-2 text-sm font-black">
                   <SlidersHorizontal className="h-4 w-4" /> Filters
                 </div>
@@ -3001,7 +3001,7 @@ export default function App() {
                     <select
                       value={vendorId}
                       onChange={(e) => setVendorId(e.target.value as string | 'All')}
-                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                     >
                       <option value="All">All vendors</option>
                       {combinedVendors.map((v) => (
@@ -3017,7 +3017,7 @@ export default function App() {
                     <select
                       value={sort}
                       onChange={(e) => setSort(e.target.value as 'Best Match' | 'Price: Low' | 'Price: High' | 'Top Rated')}
-                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                     >
                       <option>Best Match</option>
                       <option>Price: Low</option>
@@ -3046,7 +3046,7 @@ export default function App() {
                       setQuery('');
                       toast('Filters reset');
                     }}
-                    className="w-full rounded-xl border border-zinc-200 bg-white py-2 text-xs font-extrabold hover:bg-zinc-50"
+                    className="w-full rounded-xl border border-[#dbe3ef] bg-white py-2 text-xs font-extrabold hover:bg-[#f5f7fb]"
                   >
                     Reset filters
                   </button>
@@ -3071,7 +3071,7 @@ export default function App() {
                 </div>
 
                 {filtered.length === 0 ? (
-                  <div className="mt-4 rounded-3xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-600">
+                  <div className="mt-4 rounded-3xl border border-[#dbe3ef] bg-white p-8 text-center text-sm text-zinc-600">
                     No listings match current filters. Try resetting filters or broadening search terms.
                   </div>
                 ) : (
@@ -3096,8 +3096,8 @@ export default function App() {
         {activeTab === 'Marketplace' ? <MarketplaceAnalysisPanel toast={toast} /> : null}
 
         {activeTab === 'Vendors' ? (
-          <div className="overflow-hidden rounded-[32px] border border-zinc-200 bg-white shadow-sm">
-            <div className="aspect-[16/6] bg-zinc-100">
+          <div className="overflow-hidden rounded-[32px] border border-[#dbe3ef] bg-white shadow-sm">
+            <div className="aspect-[16/6] bg-[#e7f3ff]">
               <SectionImage kind="vendors" />
             </div>
             <div className="p-6">
@@ -3111,7 +3111,7 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => setVendorApplyOpen(true)}
-                  className="rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                  className="rounded-2xl bg-[#1877f2] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
                 >
                   Apply as a vendor
                 </button>
@@ -3119,14 +3119,14 @@ export default function App() {
 
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {combinedVendors.map((v) => (
-                  <div key={v.id} className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
+                  <div key={v.id} className="rounded-3xl border border-[#dbe3ef] bg-white p-4 shadow-sm">
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="text-lg font-black">{v.name}</div>
                         <div className="text-sm text-zinc-600">{v.location}</div>
                       </div>
                       {v.verified ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] font-bold text-zinc-800">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#dbe3ef] bg-[#f5f7fb] px-2 py-1 text-[11px] font-bold text-zinc-800">
                           <BadgeCheck className="h-3.5 w-3.5" /> Verified
                         </span>
                       ) : null}
@@ -3149,7 +3149,7 @@ export default function App() {
                           toast(`Viewing ${v.name} listings`);
                           setTimeout(() => listingsRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
                         }}
-                        className="flex-1 rounded-2xl bg-zinc-900 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                        className="flex-1 rounded-2xl bg-[#1877f2] py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
                       >
                         View listings
                       </button>
@@ -3160,7 +3160,7 @@ export default function App() {
                           setTimeout(() => listingsRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
                           toast(`${v.name} storefront opened`);
                         }}
-                        className="flex-1 rounded-2xl border border-zinc-200 bg-white py-2 text-sm font-extrabold hover:bg-zinc-50"
+                        className="flex-1 rounded-2xl border border-[#dbe3ef] bg-white py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
                       >
                         Storefront
                       </button>
@@ -3174,8 +3174,8 @@ export default function App() {
 
         {activeTab === 'Learn' ? (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="overflow-hidden rounded-[32px] border border-zinc-200 bg-white shadow-sm">
-              <div className="aspect-[16/9] bg-zinc-100">
+            <div className="overflow-hidden rounded-[32px] border border-[#dbe3ef] bg-white shadow-sm">
+              <div className="aspect-[16/9] bg-[#e7f3ff]">
                 <SectionImage kind="learn" />
               </div>
               <div className="p-6">
@@ -3187,14 +3187,14 @@ export default function App() {
                 </div>
 
                 <div className="mt-5 space-y-3">
-                  <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
+                  <div className="rounded-3xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
                     <div className="text-sm font-black">Condition grading</div>
                     <div className="mt-2 text-sm text-zinc-700">
                       New is sealed and unused. Used includes mileage and wear. Aftermarket includes brand credibility,
                       versioning, and install history.
                     </div>
                   </div>
-                  <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
+                  <div className="rounded-3xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
                     <div className="text-sm font-black">Fitment confidence</div>
                     <div className="mt-2 text-sm text-zinc-700">
                       Fitment checks model-years, trims, bolt patterns, offsets, and compatibility notes.
@@ -3204,12 +3204,12 @@ export default function App() {
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm">
               <div className="text-xs font-bold text-zinc-500">Quick tools</div>
               <div className="mt-1 text-2xl font-black">Shortcuts</div>
 
               <div className="mt-5 grid grid-cols-1 gap-4">
-                <div className="rounded-3xl border border-zinc-200 bg-white p-4">
+                <div className="rounded-3xl border border-[#dbe3ef] bg-white p-4">
                   <div className="flex items-center gap-2 text-sm font-black">
                     <Wrench className="h-4 w-4" /> Build list
                   </div>
@@ -3219,13 +3219,13 @@ export default function App() {
                       setSavedOpen(true);
                       toast('Saved list opened');
                     }}
-                    className="mt-3 rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                    className="mt-3 rounded-2xl bg-[#1877f2] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
                   >
                     Create list
                   </button>
                 </div>
 
-                <div className="rounded-3xl border border-zinc-200 bg-white p-4">
+                <div className="rounded-3xl border border-[#dbe3ef] bg-white p-4">
                   <div className="flex items-center gap-2 text-sm font-black">
                     <ShieldCheck className="h-4 w-4" /> Authenticity checks
                   </div>
@@ -3235,13 +3235,13 @@ export default function App() {
                       setActiveTab('Marketplace');
                       toast('Use risk checklist in Marketplace analysis');
                     }}
-                    className="mt-3 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold hover:bg-zinc-50"
+                    className="mt-3 rounded-2xl border border-[#dbe3ef] bg-white px-4 py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
                   >
                     Open guide
                   </button>
                 </div>
 
-                <div className="rounded-3xl border border-zinc-200 bg-white p-4">
+                <div className="rounded-3xl border border-[#dbe3ef] bg-white p-4">
                   <div className="flex items-center gap-2 text-sm font-black">
                     <Sparkles className="h-4 w-4" /> Marketplace analysis
                   </div>
@@ -3251,20 +3251,20 @@ export default function App() {
                       setActiveTab('Marketplace');
                       toast('Marketplace Analysis opened');
                     }}
-                    className="mt-3 rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                    className="mt-3 rounded-2xl bg-[#1877f2] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
                   >
                     Try it
                   </button>
                 </div>
 
-                <div className="rounded-3xl border border-zinc-200 bg-white p-4">
+                <div className="rounded-3xl border border-[#dbe3ef] bg-white p-4">
                   <div className="flex items-center gap-2 text-sm font-black">
                     <Heart className="h-4 w-4" /> Saved items
                   </div>
                   <div className="mt-2 text-sm text-zinc-600">Review your saved parts and jump back into purchase.</div>
                   <button
                     onClick={() => setSavedOpen(true)}
-                    className="mt-3 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-extrabold hover:bg-zinc-50"
+                    className="mt-3 rounded-2xl border border-[#dbe3ef] bg-white px-4 py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
                   >
                     Open saved
                   </button>
@@ -3277,7 +3277,7 @@ export default function App() {
         {activeTab === 'Sell' ? (
           session?.role === 'individual' ? (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm lg:col-span-2">
+              <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm lg:col-span-2">
                 <div className="text-xs font-bold text-zinc-500">Individual seller tools</div>
                 <div className="mt-1 text-2xl font-black">Create a listing</div>
                 <div className="mt-2 text-sm text-zinc-600">
@@ -3289,7 +3289,7 @@ export default function App() {
                     <input
                       value={sellTitle}
                       onChange={(e) => setSellTitle(e.target.value)}
-                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                       placeholder="e.g., OEM Civic Si rear bumper"
                     />
                   </div>
@@ -3298,7 +3298,7 @@ export default function App() {
                     <select
                       value={sellCategory}
                       onChange={(e) => setSellCategory(e.target.value as Category)}
-                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                     >
                       {CATEGORIES.map((c) => (
                         <option key={c} value={c}>
@@ -3312,7 +3312,7 @@ export default function App() {
                     <select
                       value={sellCondition}
                       onChange={(e) => setSellCondition(e.target.value as Condition)}
-                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                     >
                       <option value="New">New</option>
                       <option value="Used">Used</option>
@@ -3324,7 +3324,7 @@ export default function App() {
                     <input
                       value={sellBrand}
                       onChange={(e) => setSellBrand(e.target.value)}
-                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                       placeholder="OEM / Brand"
                     />
                   </div>
@@ -3333,7 +3333,7 @@ export default function App() {
                     <input
                       value={sellPrice}
                       onChange={(e) => setSellPrice(e.target.value)}
-                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                       placeholder="$500"
                     />
                   </div>
@@ -3342,28 +3342,28 @@ export default function App() {
                     <input
                       value={sellFitment}
                       onChange={(e) => setSellFitment(e.target.value)}
-                      className="mt-1 w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none"
+                      className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
                       placeholder="2017-2021 Civic Si"
                     />
                   </div>
                 </div>
                 <button
                   onClick={createIndividualListing}
-                  className="mt-4 rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-zinc-800"
+                  className="mt-4 rounded-2xl bg-[#1877f2] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
                 >
                   Publish listing
                 </button>
               </div>
-              <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
+              <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm">
                 <div className="text-xs font-bold text-zinc-500">My seller summary</div>
                 <div className="mt-1 text-2xl font-black">Listings & sales</div>
-                <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                <div className="mt-4 rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3">
                   <div className="text-xs font-bold text-zinc-500">Active individual listings</div>
                   <div className="text-lg font-black">
                     {userListings.filter((l) => l.sellerUserId === session.id).length}
                   </div>
                 </div>
-                <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                <div className="mt-3 rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3">
                   <div className="text-xs font-bold text-zinc-500">Completed individual sales</div>
                   <div className="text-lg font-black">
                     {fmtMoney(
@@ -3375,14 +3375,14 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => setActiveTab('Valuation')}
-                  className="mt-4 w-full rounded-2xl border border-zinc-200 bg-white py-2 text-sm font-extrabold hover:bg-zinc-50"
+                  className="mt-4 w-full rounded-2xl border border-[#dbe3ef] bg-white py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
                 >
                   Browse marketplace
                 </button>
               </div>
             </div>
           ) : (
-            <div className="rounded-3xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-700">
+            <div className="rounded-3xl border border-[#dbe3ef] bg-white p-8 text-center text-sm text-zinc-700">
               Sell tools are available for logged-in Individual Users only.
             </div>
           )
@@ -3391,7 +3391,7 @@ export default function App() {
         {activeTab === 'Dashboard' ? (
           session?.role === 'vendor' ? (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm lg:col-span-2">
+              <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm lg:col-span-2">
                 <div className="text-xs font-bold text-zinc-500">Vendor dashboard</div>
                 <div className="mt-1 text-2xl font-black">Sales performance</div>
                 <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -3400,20 +3400,20 @@ export default function App() {
                   <Stat icon={TrendingUp} label="Monthly sales" value={fmtMoney(vendorRevenue.monthly)} />
                 </div>
               </div>
-              <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
+              <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm">
                 <div className="text-xs font-bold text-zinc-500">Customer feedback</div>
                 <div className="mt-1 text-2xl font-black">Recent reviews</div>
                 <div className="mt-4 space-y-3">
                   {vendorReviews.length ? (
                     vendorReviews.slice(0, 4).map((review) => (
-                      <div key={review.id} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                      <div key={review.id} className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3">
                         <div className="text-xs font-bold text-zinc-500">{review.reviewerName}</div>
                         <div className="text-sm font-black">{review.rating}/5</div>
                         <div className="mt-1 text-sm text-zinc-700">{review.comment}</div>
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-600">
+                    <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3 text-sm text-zinc-600">
                       No reviews yet.
                     </div>
                   )}
@@ -3421,7 +3421,7 @@ export default function App() {
               </div>
             </div>
           ) : session?.role === 'admin' && adminRevenue ? (
-            <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm">
               <div className="text-xs font-bold text-zinc-500">Website administrator dashboard</div>
               <div className="mt-1 text-2xl font-black">Master sales overview</div>
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -3430,7 +3430,7 @@ export default function App() {
                   { label: 'Weekly', data: adminRevenue.weekly },
                   { label: 'Monthly', data: adminRevenue.monthly }
                 ].map((period) => (
-                  <div key={period.label} className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
+                  <div key={period.label} className="rounded-3xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
                     <div className="text-xs font-bold text-zinc-500">{period.label} total</div>
                     <div className="text-xl font-black">{fmtMoney(period.data.total)}</div>
                     <div className="mt-2 text-xs text-zinc-700">Vendor sales: {fmtMoney(period.data.vendor)}</div>
@@ -3438,19 +3438,19 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
+              <div className="mt-4 rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3 text-sm text-zinc-700">
                 Total completed orders tracked: <span className="font-black">{orders.length}</span>
               </div>
             </div>
           ) : (
-            <div className="rounded-3xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-700">
+            <div className="rounded-3xl border border-[#dbe3ef] bg-white p-8 text-center text-sm text-zinc-700">
               Dashboard access requires a Vendor or Administrator account.
             </div>
           )
         ) : null}
 
         <footer className="mt-10 pb-8 text-center text-xs text-zinc-500">
-          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 shadow-sm">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-4 py-2 shadow-sm">
             <Info className="h-4 w-4" /> AutoIndex demo with functional controls and persistent local state.
           </div>
         </footer>

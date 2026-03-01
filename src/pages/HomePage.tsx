@@ -12,7 +12,7 @@ export function HomePage({ onNavigate }: Props) {
       <Card className="overflow-hidden p-0">
         <div className="grid gap-0 md:grid-cols-2">
           <div className="bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0b1220] p-6 text-white md:p-8">
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-200">Marketplace Analysis</p>
+            <p className="text-sm font-semibold uppercase tracking-wide text-[#dbe9ff]">Marketplace Analysis</p>
             <h1 className="mt-2 text-[28px] font-bold leading-[1.15]">Know if a listing is fair before you buy</h1>
             <p className="mt-3 text-base leading-6 text-zinc-200">
               AutoIndex combines fair market value logic, risk signals, and deterministic confidence scoring so buyers can
@@ -30,7 +30,7 @@ export function HomePage({ onNavigate }: Props) {
               </Button>
             </div>
           </div>
-          <div className="bg-zinc-50 p-6 md:p-8">
+          <div className="bg-[#f0f2f5] p-6 md:p-8">
             <h2 className="text-[20px] font-semibold leading-7 text-[var(--color-text)]">3-step product flow</h2>
             <ol className="mt-4 space-y-3">
               {[

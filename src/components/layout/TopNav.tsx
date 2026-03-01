@@ -43,7 +43,7 @@ export function TopNav({ navItems, currentPath, onNavigate, embedMode }: Props) 
                 'focus-ring rounded-[var(--radius-input)] px-3 py-2 text-sm font-medium transition-colors',
                 currentPath === item.path
                   ? 'bg-[var(--color-primary)] text-white'
-                  : 'text-zinc-700 hover:bg-zinc-100'
+                  : 'text-zinc-700 hover:bg-[#e7f3ff]'
               )}
             >
               {item.label}

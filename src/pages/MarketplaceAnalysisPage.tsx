@@ -183,7 +183,7 @@ export function MarketplaceAnalysisPage() {
 
       <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-4">
-          <Card className={activeStep === 1 ? 'ring-1 ring-blue-200' : ''}>
+          <Card className={activeStep === 1 ? 'ring-1 ring-[#dbe3ef]' : ''}>
             <h2 className="text-[20px] font-semibold leading-7 text-[var(--color-text)]">Step 1: Choose Part</h2>
             <p className="mt-1 text-sm text-zinc-600">Pick category and condition before link analysis.</p>
 
@@ -197,8 +197,8 @@ export function MarketplaceAnalysisPage() {
                     onClick={() => setForm((prev) => ({ ...prev, category: part.id }))}
                     className={`focus-ring rounded-[var(--radius-card)] border p-3 text-left transition-colors ${
                       selected
-                        ? 'border-[var(--color-primary)] bg-blue-50'
-                        : 'border-[var(--color-border)] bg-white hover:bg-zinc-50'
+                        ? 'border-[var(--color-primary)] bg-[#e7f3ff]'
+                        : 'border-[var(--color-border)] bg-white hover:bg-[#eef3fb]'
                     }`}
                   >
                     <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
@@ -228,7 +228,7 @@ export function MarketplaceAnalysisPage() {
             </div>
           </Card>
 
-          <Card className={activeStep === 2 ? 'ring-1 ring-blue-200' : ''}>
+          <Card className={activeStep === 2 ? 'ring-1 ring-[#dbe3ef]' : ''}>
             <h2 className="text-[20px] font-semibold leading-7 text-[var(--color-text)]">Step 2: Paste Listing Link</h2>
             <p className="mt-1 text-sm text-zinc-600">URL must be valid http/https. Ask price is optional but improves FMV comparison.</p>
 
@@ -382,7 +382,7 @@ export function MarketplaceAnalysisPage() {
                   ))}
                 </ul>
 
-                <div className="mt-4 rounded-[var(--radius-input)] border border-[var(--color-border)] bg-zinc-50 p-3">
+                <div className="mt-4 rounded-[var(--radius-input)] border border-[var(--color-border)] bg-[#f0f2f5] p-3">
                   <p className="text-sm font-semibold text-[var(--color-text)]">Questions to ask the seller</p>
                   <p className="mt-1 text-sm text-zinc-700">Use this checklist before payment.</p>
                   <Button variant="secondary" className="mt-3" onClick={copyQuestions}>

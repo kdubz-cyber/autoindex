@@ -26,8 +26,8 @@ export function Stepper({ steps, activeStep, onStepChange }: Props) {
               className={cx(
                 'focus-ring flex w-full items-center gap-2 rounded-[var(--radius-input)] border px-2 py-2 text-left text-sm transition-colors',
                 complete && 'border-emerald-300 bg-emerald-50 text-emerald-900',
-                active && 'border-[var(--color-primary)] bg-blue-50 text-blue-900',
-                !active && !complete && 'border-[var(--color-border)] bg-white text-zinc-700 hover:bg-zinc-50'
+                active && 'border-[var(--color-primary)] bg-[#e7f3ff] text-[#1b4f9c]',
+                !active && !complete && 'border-[var(--color-border)] bg-white text-zinc-700 hover:bg-[#eef3fb]'
               )}
               aria-current={active ? 'step' : undefined}
             >
