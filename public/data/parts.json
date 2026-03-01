@@ -1,0 +1,649 @@
+{
+  "parts": [
+    {
+      "id": "street-tires-200tw",
+      "name": "200TW Summer Tire Set",
+      "category": "Tires",
+      "description": "Balanced grip and daily usability for mixed street driving.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "honda-civic-2020-sport",
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "bmw-340i-2018-msport",
+          "vw-gti-2017-se",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["street-reliable", "budget-daily", "weekend-canyon", "track-ready"],
+      "skillLevelRequired": "Beginner",
+      "noiseLevel": 1,
+      "priority": 95,
+      "pricing": {
+        "usedRange": [250, 500],
+        "usedAvg": 370,
+        "aftermarketNewAvg": 720,
+        "dealerNew": 980
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "performance-brake-pads",
+      "name": "Performance Brake Pads",
+      "category": "Brakes",
+      "description": "Faster bite and higher fade resistance than OEM street pads.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "honda-civic-2020-sport",
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "bmw-340i-2018-msport",
+          "vw-gti-2017-se",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["street-reliable", "weekend-canyon", "track-ready"],
+      "skillLevelRequired": "Beginner",
+      "noiseLevel": 1,
+      "priority": 94,
+      "pricing": {
+        "usedRange": [90, 180],
+        "usedAvg": 130,
+        "aftermarketNewAvg": 220,
+        "dealerNew": 340
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "dot4-fluid",
+      "name": "DOT 4 High Temp Brake Fluid",
+      "category": "Brakes",
+      "description": "Higher boiling point brake fluid for repeated hard use.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "honda-civic-2020-sport",
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "bmw-340i-2018-msport",
+          "vw-gti-2017-se",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["track-ready", "weekend-canyon", "street-reliable"],
+      "skillLevelRequired": "Beginner",
+      "noiseLevel": 0,
+      "priority": 92,
+      "pricing": {
+        "usedRange": [12, 24],
+        "usedAvg": 18,
+        "aftermarketNewAvg": 26,
+        "dealerNew": 42
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "intake-stage1",
+      "name": "Stage 1 Intake System",
+      "category": "Engine",
+      "description": "Improves throttle response and airflow without major drivability tradeoffs.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "honda-civic-2020-sport",
+          "subaru-wrx-2019-base",
+          "vw-gti-2017-se",
+          "ford-mustang-2017-gt",
+          "bmw-340i-2018-msport",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["budget-daily", "street-reliable", "weekend-canyon"],
+      "skillLevelRequired": "Beginner",
+      "noiseLevel": 1,
+      "priority": 88,
+      "pricing": {
+        "usedRange": [120, 240],
+        "usedAvg": 170,
+        "aftermarketNewAvg": 320,
+        "dealerNew": null
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "catback-exhaust",
+      "name": "Cat-back Exhaust",
+      "category": "Exhaust",
+      "description": "Increases flow and adds a deeper tone while keeping stock catalytic components.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "honda-civic-2020-sport",
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "bmw-340i-2018-msport",
+          "vw-gti-2017-se",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["street-reliable", "weekend-canyon", "show-style"],
+      "skillLevelRequired": "Intermediate",
+      "noiseLevel": 2,
+      "priority": 80,
+      "pricing": {
+        "usedRange": [280, 650],
+        "usedAvg": 430,
+        "aftermarketNewAvg": 890,
+        "dealerNew": 1200
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "highflow-downpipe",
+      "name": "High-Flow Downpipe",
+      "category": "Exhaust",
+      "description": "Major turbo flow upgrade, usually requires calibration updates.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "subaru-wrx-2019-base",
+          "vw-gti-2017-se",
+          "bmw-340i-2018-msport"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["weekend-canyon", "track-ready", "show-style"],
+      "skillLevelRequired": "Intermediate",
+      "noiseLevel": 3,
+      "priority": 70,
+      "pricing": {
+        "usedRange": [260, 540],
+        "usedAvg": 370,
+        "aftermarketNewAvg": 780,
+        "dealerNew": null
+      },
+      "dependencies": ["ecu-tune-stage2"],
+      "conflicts": ["oem-catted-midpipe"]
+    },
+    {
+      "id": "oem-catted-midpipe",
+      "name": "OEM Catted Midpipe",
+      "category": "Exhaust",
+      "description": "Quiet emissions-friendly OEM replacement.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "subaru-wrx-2019-base",
+          "vw-gti-2017-se",
+          "bmw-340i-2018-msport"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["budget-daily", "street-reliable"],
+      "skillLevelRequired": "Beginner",
+      "noiseLevel": 0,
+      "priority": 65,
+      "pricing": {
+        "usedRange": [120, 280],
+        "usedAvg": 190,
+        "aftermarketNewAvg": 420,
+        "dealerNew": 610
+      },
+      "dependencies": [],
+      "conflicts": ["highflow-downpipe"]
+    },
+    {
+      "id": "ecu-tune-stage1",
+      "name": "ECU Tune Stage 1",
+      "category": "ECU",
+      "description": "Conservative calibration for bolt-ons and improved drivability.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "subaru-wrx-2019-base",
+          "vw-gti-2017-se",
+          "bmw-340i-2018-msport",
+          "ford-mustang-2017-gt",
+          "toyota-86-2022-base",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["street-reliable", "weekend-canyon", "budget-daily"],
+      "skillLevelRequired": "Intermediate",
+      "noiseLevel": 0,
+      "priority": 89,
+      "pricing": {
+        "usedRange": [120, 320],
+        "usedAvg": 210,
+        "aftermarketNewAvg": 520,
+        "dealerNew": null
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "ecu-tune-stage2",
+      "name": "ECU Tune Stage 2",
+      "category": "ECU",
+      "description": "Aggressive calibration for high-flow exhaust and upgraded fueling.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "subaru-wrx-2019-base",
+          "vw-gti-2017-se",
+          "bmw-340i-2018-msport"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["weekend-canyon", "track-ready", "show-style"],
+      "skillLevelRequired": "Advanced",
+      "noiseLevel": 0,
+      "priority": 85,
+      "pricing": {
+        "usedRange": [220, 450],
+        "usedAvg": 310,
+        "aftermarketNewAvg": 760,
+        "dealerNew": null
+      },
+      "dependencies": ["wideband-o2"],
+      "conflicts": ["ecu-tune-stage1"]
+    },
+    {
+      "id": "wideband-o2",
+      "name": "Wideband O2 Sensor Kit",
+      "category": "Engine",
+      "description": "Supports safer tuning by monitoring real-time AFR data.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "subaru-wrx-2019-base",
+          "vw-gti-2017-se",
+          "bmw-340i-2018-msport",
+          "ford-mustang-2017-gt",
+          "toyota-86-2022-base",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["weekend-canyon", "track-ready", "show-style"],
+      "skillLevelRequired": "Intermediate",
+      "noiseLevel": 0,
+      "priority": 60,
+      "pricing": {
+        "usedRange": [90, 190],
+        "usedAvg": 135,
+        "aftermarketNewAvg": 260,
+        "dealerNew": null
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "coilovers-street",
+      "name": "Street Coilover Kit",
+      "category": "Suspension",
+      "description": "Lower ride height and firmer control while preserving road comfort.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "honda-civic-2020-sport",
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "bmw-340i-2018-msport",
+          "vw-gti-2017-se",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["weekend-canyon", "track-ready", "show-style"],
+      "skillLevelRequired": "Intermediate",
+      "noiseLevel": 2,
+      "priority": 86,
+      "pricing": {
+        "usedRange": [550, 1200],
+        "usedAvg": 760,
+        "aftermarketNewAvg": 1450,
+        "dealerNew": null
+      },
+      "dependencies": ["alignment-service"],
+      "conflicts": []
+    },
+    {
+      "id": "alignment-service",
+      "name": "Performance Alignment",
+      "category": "Suspension",
+      "description": "Required setup for lowered suspension to avoid uneven wear.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "honda-civic-2020-sport",
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "bmw-340i-2018-msport",
+          "vw-gti-2017-se",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["street-reliable", "weekend-canyon", "track-ready", "show-style", "budget-daily"],
+      "skillLevelRequired": "Beginner",
+      "noiseLevel": 0,
+      "priority": 90,
+      "pricing": {
+        "usedRange": [80, 160],
+        "usedAvg": 110,
+        "aftermarketNewAvg": 140,
+        "dealerNew": 220
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "sway-bars",
+      "name": "Front + Rear Sway Bar Set",
+      "category": "Suspension",
+      "description": "Reduces body roll and sharpens turn-in under load.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "honda-civic-2020-sport",
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "bmw-340i-2018-msport",
+          "vw-gti-2017-se",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["weekend-canyon", "track-ready", "street-reliable"],
+      "skillLevelRequired": "Intermediate",
+      "noiseLevel": 1,
+      "priority": 82,
+      "pricing": {
+        "usedRange": [180, 380],
+        "usedAvg": 260,
+        "aftermarketNewAvg": 540,
+        "dealerNew": null
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "bbk-front",
+      "name": "Front Big Brake Kit",
+      "category": "Brakes",
+      "description": "Track-focused multi-piston front kit with larger rotors.",
+      "fitment": {
+        "vehicleIds": [
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "bmw-340i-2018-msport",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["track-ready", "weekend-canyon", "show-style"],
+      "skillLevelRequired": "Advanced",
+      "noiseLevel": 1,
+      "priority": 78,
+      "pricing": {
+        "usedRange": [1200, 2600],
+        "usedAvg": 1750,
+        "aftermarketNewAvg": 3300,
+        "dealerNew": null
+      },
+      "dependencies": ["dot4-fluid"],
+      "conflicts": []
+    },
+    {
+      "id": "intercooler-upgrade",
+      "name": "Front-Mount Intercooler Upgrade",
+      "category": "Engine",
+      "description": "Improves charge-air cooling during repeated pulls.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "subaru-wrx-2019-base",
+          "vw-gti-2017-se",
+          "bmw-340i-2018-msport"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["weekend-canyon", "track-ready", "show-style"],
+      "skillLevelRequired": "Intermediate",
+      "noiseLevel": 0,
+      "priority": 84,
+      "pricing": {
+        "usedRange": [350, 700],
+        "usedAvg": 480,
+        "aftermarketNewAvg": 980,
+        "dealerNew": null
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "upgraded-fuel-pump",
+      "name": "Upgraded Fuel Pump",
+      "category": "Engine",
+      "description": "Required for higher power targets and richer fuel demand.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "subaru-wrx-2019-base",
+          "vw-gti-2017-se",
+          "bmw-340i-2018-msport",
+          "ford-mustang-2017-gt"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["track-ready", "show-style"],
+      "skillLevelRequired": "Advanced",
+      "noiseLevel": 1,
+      "priority": 72,
+      "pricing": {
+        "usedRange": [180, 350],
+        "usedAvg": 250,
+        "aftermarketNewAvg": 470,
+        "dealerNew": null
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "clutch-stage2",
+      "name": "Stage 2 Clutch Kit",
+      "category": "Transmission",
+      "description": "Increased holding power for torque-heavy setups.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "bmw-340i-2018-msport",
+          "vw-gti-2017-se",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["track-ready", "show-style"],
+      "skillLevelRequired": "Advanced",
+      "noiseLevel": 2,
+      "priority": 74,
+      "pricing": {
+        "usedRange": [300, 650],
+        "usedAvg": 420,
+        "aftermarketNewAvg": 870,
+        "dealerNew": 1200
+      },
+      "dependencies": [],
+      "conflicts": ["oem-clutch-kit"]
+    },
+    {
+      "id": "oem-clutch-kit",
+      "name": "OEM Clutch Replacement",
+      "category": "Transmission",
+      "description": "Stock replacement kit for daily drivability and low NVH.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "bmw-340i-2018-msport",
+          "vw-gti-2017-se",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["budget-daily", "street-reliable"],
+      "skillLevelRequired": "Intermediate",
+      "noiseLevel": 0,
+      "priority": 73,
+      "pricing": {
+        "usedRange": [160, 340],
+        "usedAvg": 230,
+        "aftermarketNewAvg": 480,
+        "dealerNew": 690
+      },
+      "dependencies": [],
+      "conflicts": ["clutch-stage2"]
+    },
+    {
+      "id": "aero-kit",
+      "name": "Street Aero Package",
+      "category": "Chassis",
+      "description": "Front lip, side skirts, and diffuser package for style + stability.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["show-style", "weekend-canyon"],
+      "skillLevelRequired": "Intermediate",
+      "noiseLevel": 1,
+      "priority": 66,
+      "pricing": {
+        "usedRange": [350, 1100],
+        "usedAvg": 620,
+        "aftermarketNewAvg": 1450,
+        "dealerNew": null
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "track-alignment-spec",
+      "name": "Track Alignment Spec Sheet",
+      "category": "Suspension",
+      "description": "Target alignment values for track-day consistency.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "bmw-340i-2018-msport",
+          "vw-gti-2017-se",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["track-ready", "weekend-canyon"],
+      "skillLevelRequired": "Beginner",
+      "noiseLevel": 0,
+      "priority": 68,
+      "pricing": {
+        "usedRange": [40, 90],
+        "usedAvg": 60,
+        "aftermarketNewAvg": 95,
+        "dealerNew": 130
+      },
+      "dependencies": [],
+      "conflicts": []
+    },
+    {
+      "id": "subframe-bushings",
+      "name": "Solid Subframe Bushings",
+      "category": "Chassis",
+      "description": "Sharper rear-end response with increased NVH.",
+      "fitment": {
+        "vehicleIds": [
+          "toyota-86-2022-base",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["track-ready", "weekend-canyon"],
+      "skillLevelRequired": "Advanced",
+      "noiseLevel": 3,
+      "priority": 58,
+      "pricing": {
+        "usedRange": [120, 240],
+        "usedAvg": 170,
+        "aftermarketNewAvg": 320,
+        "dealerNew": null
+      },
+      "dependencies": ["alignment-service"],
+      "conflicts": []
+    },
+    {
+      "id": "engine-mount-upgrade",
+      "name": "Poly Engine Mount Set",
+      "category": "Engine",
+      "description": "Reduces drivetrain movement; can increase cabin vibration.",
+      "fitment": {
+        "vehicleIds": [
+          "honda-civic-2018-si",
+          "honda-civic-2020-sport",
+          "subaru-wrx-2019-base",
+          "ford-mustang-2017-gt",
+          "vw-gti-2017-se",
+          "nissan-350z-2006-touring"
+        ],
+        "regions": ["US", "CA"]
+      },
+      "goals": ["track-ready", "weekend-canyon"],
+      "skillLevelRequired": "Intermediate",
+      "noiseLevel": 3,
+      "priority": 57,
+      "pricing": {
+        "usedRange": [100, 280],
+        "usedAvg": 170,
+        "aftermarketNewAvg": 360,
+        "dealerNew": null
+      },
+      "dependencies": [],
+      "conflicts": []
+    }
+  ]
+}

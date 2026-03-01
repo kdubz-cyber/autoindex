@@ -2735,6 +2735,7 @@ export default function App() {
   const navTabs: Tab[] = ['Valuation', 'Part Matrix', 'Marketplace', 'Vendors', 'Learn'];
   if (session?.role === 'individual') navTabs.push('Sell');
   if (session?.role === 'vendor' || session?.role === 'admin') navTabs.push('Dashboard');
+  const buildPlannerHref = `${import.meta.env.BASE_URL}build.html`;
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] text-zinc-900">
@@ -3248,6 +3249,13 @@ export default function App() {
                 <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs">{cart.length}</span>
               </button>
 
+              <a
+                href={buildPlannerHref}
+                className="inline-flex items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
+              >
+                <Wrench className="h-4 w-4" /> <span className="hidden sm:inline">Build Planner</span>
+              </a>
+
               {session ? (
                 <>
                   <span className="hidden items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-xs font-extrabold text-zinc-700 md:inline-flex">
@@ -3314,6 +3322,13 @@ export default function App() {
                 {t}
               </button>
             ))}
+
+            <a
+              href={buildPlannerHref}
+              className="shrink-0 rounded-full border border-[#dbe3ef] bg-white px-4 py-2 text-sm font-extrabold text-zinc-800 hover:bg-[#f5f7fb]"
+            >
+              Build Planner
+            </a>
 
             <div className="ml-auto hidden items-center gap-2 lg:flex">
               <Pill>

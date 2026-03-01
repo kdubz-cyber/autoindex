@@ -1,0 +1,76 @@
+{
+  "vehicles": [
+    {
+      "id": "honda-civic-2018-si",
+      "make": "Honda",
+      "model": "Civic",
+      "year": 2018,
+      "trim": "Si",
+      "drivetrain": "FWD",
+      "regions": ["US", "CA"]
+    },
+    {
+      "id": "honda-civic-2020-sport",
+      "make": "Honda",
+      "model": "Civic",
+      "year": 2020,
+      "trim": "Sport",
+      "drivetrain": "FWD",
+      "regions": ["US", "CA"]
+    },
+    {
+      "id": "toyota-86-2022-base",
+      "make": "Toyota",
+      "model": "GR86",
+      "year": 2022,
+      "trim": "Base",
+      "drivetrain": "RWD",
+      "regions": ["US", "CA"]
+    },
+    {
+      "id": "subaru-wrx-2019-base",
+      "make": "Subaru",
+      "model": "WRX",
+      "year": 2019,
+      "trim": "Base",
+      "drivetrain": "AWD",
+      "regions": ["US", "CA"]
+    },
+    {
+      "id": "ford-mustang-2017-gt",
+      "make": "Ford",
+      "model": "Mustang",
+      "year": 2017,
+      "trim": "GT",
+      "drivetrain": "RWD",
+      "regions": ["US"]
+    },
+    {
+      "id": "bmw-340i-2018-msport",
+      "make": "BMW",
+      "model": "340i",
+      "year": 2018,
+      "trim": "M Sport",
+      "drivetrain": "RWD",
+      "regions": ["US", "CA"]
+    },
+    {
+      "id": "vw-gti-2017-se",
+      "make": "Volkswagen",
+      "model": "GTI",
+      "year": 2017,
+      "trim": "SE",
+      "drivetrain": "FWD",
+      "regions": ["US", "CA"]
+    },
+    {
+      "id": "nissan-350z-2006-touring",
+      "make": "Nissan",
+      "model": "350Z",
+      "year": 2006,
+      "trim": "Touring",
+      "drivetrain": "RWD",
+      "regions": ["US", "CA"]
+    }
+  ]
+}

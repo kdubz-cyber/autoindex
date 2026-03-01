@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AutoIndex Build Planner</title>
+    <meta
+      name="description"
+      content="AutoIndex Build Planner: choose vehicle, goal, constraints, and generate a guided modification path with pricing comparisons."
+    />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./build.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="./">
+          <span class="brand-mark">AI</span>
+          <span class="brand-text">
+            <span class="brand-title">AutoIndex</span>
+            <span class="brand-subtitle">Build Planner</span>
+          </span>
+        </a>
+        <nav class="header-links" aria-label="Build Planner navigation">
+          <a class="header-link" href="./">Home</a>
+          <a class="header-link" href="./">Marketplace Analysis</a>
+          <a class="header-link active" href="./build.html" aria-current="page">Build Planner</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="hero card">
+        <p class="section-subtitle" style="margin: 0">Choose-your-own-adventure build flow</p>
+        <h1 class="hero-title">Build Planner</h1>
+        <p class="hero-text">
+          Select your vehicle, define your build goal, set constraints, and AutoIndex will generate compatible upgrade
+          moves with dependencies, warnings, and deal scoring.
+        </p>
+      </section>
+
+      <div class="layout">
+        <section class="panel-stack">
+          <section class="card" aria-labelledby="wizard-heading">
+            <h2 id="wizard-heading" class="section-title">Build Wizard</h2>
+            <p class="section-subtitle">Vehicle → Goal → Constraints → Suggested next moves.</p>
+
+            <div class="stepper" id="stepper" aria-label="Build wizard steps"></div>
+
+            <div class="step-panel" id="step-panel-1" data-step="1">
+              <h3 class="section-title">Step 1: Vehicle selection</h3>
+              <p class="section-subtitle">Choose exact make/model/year/trim for hard fitment matching.</p>
+              <div class="field-grid">
+                <div class="field">
+                  <label for="make-select">Make</label>
+                  <select id="make-select"></select>
+                </div>
+                <div class="field">
+                  <label for="model-select">Model</label>
+                  <select id="model-select"></select>
+                </div>
+                <div class="field">
+                  <label for="year-select">Year</label>
+                  <select id="year-select"></select>
+                </div>
+                <div class="field">
+                  <label for="trim-select">Trim</label>
+                  <select id="trim-select"></select>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-panel hidden" id="step-panel-2" data-step="2">
+              <h3 class="section-title">Step 2: Build goal archetype</h3>
+              <p class="section-subtitle">Pick the mission profile for your build path.</p>
+              <div id="goal-grid" class="goal-grid" role="radiogroup" aria-label="Build goal archetypes"></div>
+            </div>
+
+            <div class="step-panel hidden" id="step-panel-3" data-step="3">
+              <h3 class="section-title">Step 3: Constraints</h3>
+              <p class="section-subtitle">Budget, skill, region, and noise tolerance shape your recommendations.</p>
+              <div class="field-grid">
+                <div class="field">
+                  <label for="budget-input">Budget (USD)</label>
+                  <input id="budget-input" type="number" min="200" step="50" />
+                </div>
+                <div class="field">
+                  <label for="skill-select">Skill level</label>
+                  <select id="skill-select"></select>
+                </div>
+                <div class="field">
+                  <label for="region-select">Region</label>
+                  <select id="region-select"></select>
+                </div>
+                <div class="field">
+                  <label for="noise-select">Noise tolerance</label>
+                  <select id="noise-select"></select>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-panel hidden" id="step-panel-4" data-step="4">
+              <h3 class="section-title">Step 4: Suggested next moves</h3>
+              <p class="section-subtitle">
+                Toggle recommended parts to build your plan. The rules engine enforces fitment, dependencies, and
+                conflicts.
+              </p>
+              <div id="suggested-parts" class="parts-grid"></div>
+            </div>
+
+            <div class="actions">
+              <button id="back-btn" class="btn ghost" type="button">Back</button>
+              <button id="next-btn" class="btn primary" type="button">Next</button>
+              <button id="reset-btn" class="btn danger" type="button">Reset Build</button>
+            </div>
+            <div id="wizard-status" class="footer-note" aria-live="polite"></div>
+          </section>
+
+          <section class="card" aria-labelledby="selected-heading">
+            <h2 id="selected-heading" class="section-title">Selected parts and pricing comparison</h2>
+            <p class="section-subtitle">
+              Compare used market range, aftermarket new average, and dealer new. Enter asking price for live deal
+              scoring.
+            </p>
+
+            <div class="table-wrap">
+              <table class="parts-table">
+                <thead>
+                  <tr>
+                    <th>Part</th>
+                    <th>Used range / avg</th>
+                    <th>Aftermarket new avg</th>
+                    <th>Dealer new</th>
+                    <th>Seller asking</th>
+                    <th>Deal score</th>
+                    <th>Savings vs new</th>
+                  </tr>
+                </thead>
+                <tbody id="selected-parts-table-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <aside class="panel-stack">
+          <section class="card" aria-labelledby="summary-heading">
+            <h2 id="summary-heading" class="section-title">Build Summary</h2>
+            <div class="kpi-row" id="summary-kpis"></div>
+            <p class="footer-note" id="summary-note"></p>
+          </section>
+
+          <section class="card" aria-labelledby="quest-heading">
+            <h2 id="quest-heading" class="section-title">Build Quest Log</h2>
+            <p class="section-subtitle">Narrative of decisions, required support mods, warnings, and next actions.</p>
+            <ul id="quest-log" class="quest-list"></ul>
+          </section>
+
+          <section class="card" aria-labelledby="warnings-heading">
+            <h2 id="warnings-heading" class="section-title">Warnings and required items</h2>
+            <div>
+              <h3 class="section-subtitle" style="margin-bottom: 0.4rem">Required supporting mods</h3>
+              <ul id="required-list" class="quest-list"></ul>
+            </div>
+            <div style="margin-top: 0.8rem">
+              <h3 class="section-subtitle" style="margin-bottom: 0.4rem">Warnings</h3>
+              <ul id="warning-list" class="warning-list"></ul>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="export-heading">
+            <h2 id="export-heading" class="section-title">Export Build</h2>
+            <p class="section-subtitle">Download JSON + plain text summary for sharing or importing later.</p>
+            <div class="actions" style="margin-top: 0">
+              <button id="export-json-btn" type="button" class="btn primary">Export JSON</button>
+              <button id="export-text-btn" type="button" class="btn">Export Summary TXT</button>
+            </div>
+            <div class="footer-note">Build state is saved automatically in your browser via localStorage.</div>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <script defer src="./build.js"></script>
+  </body>
+</html>

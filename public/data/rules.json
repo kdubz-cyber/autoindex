@@ -1,0 +1,174 @@
+{
+  "goalArchetypes": [
+    {
+      "id": "budget-daily",
+      "label": "Budget Daily",
+      "description": "Keep total spend controlled while improving reliability and feel.",
+      "defaultPartIds": ["street-tires-200tw", "performance-brake-pads", "alignment-service"],
+      "nextSteps": [
+        "Prioritize maintenance baseline before power mods.",
+        "Reserve at least 15% of budget for labor and alignment.",
+        "Validate part numbers with VIN before buying used."
+      ]
+    },
+    {
+      "id": "street-reliable",
+      "label": "Street Reliable",
+      "description": "Balanced setup for everyday driving with confidence upgrades.",
+      "defaultPartIds": ["street-tires-200tw", "performance-brake-pads", "intake-stage1"],
+      "nextSteps": [
+        "Focus on cooling, braking, and tire quality first.",
+        "Prefer proven bolt-ons with clear fitment documentation.",
+        "Keep emissions-compliant options for easier inspections."
+      ]
+    },
+    {
+      "id": "weekend-canyon",
+      "label": "Weekend Canyon",
+      "description": "Sharper handling and stronger acceleration for spirited driving.",
+      "defaultPartIds": ["street-tires-200tw", "sway-bars", "coilovers-street", "ecu-tune-stage1"],
+      "nextSteps": [
+        "Add supporting suspension and alignment before higher-power upgrades.",
+        "Stagger mod installation to isolate tuning issues.",
+        "Plan brake fluid refresh before heavy mountain driving."
+      ]
+    },
+    {
+      "id": "track-ready",
+      "label": "Track Ready",
+      "description": "Heat and durability-focused package for repeated hard laps.",
+      "defaultPartIds": [
+        "street-tires-200tw",
+        "dot4-fluid",
+        "track-alignment-spec",
+        "coilovers-street",
+        "bbk-front"
+      ],
+      "nextSteps": [
+        "Start with consumables: tires, fluid, and pads.",
+        "Monitor temps and AFR before aggressive power goals.",
+        "Use a pre-event torque and fluid checklist every session."
+      ]
+    },
+    {
+      "id": "show-style",
+      "label": "Show Style",
+      "description": "Visual impact plus drivability with select performance pieces.",
+      "defaultPartIds": ["aero-kit", "catback-exhaust", "street-tires-200tw"],
+      "nextSteps": [
+        "Balance cosmetic parts with mechanical reliability upgrades.",
+        "Confirm wheel/tire clearance if ride height changes.",
+        "Budget for paint/body prep when buying used aero."
+      ]
+    }
+  ],
+  "skillLevels": ["Beginner", "Intermediate", "Advanced"],
+  "regions": ["US", "CA"],
+  "noiseTolerances": ["Low", "Medium", "High"],
+  "rules": [
+    {
+      "id": "rule-downpipe-needs-stage2",
+      "description": "High-flow downpipe requires Stage 2 tune.",
+      "when": {
+        "selectedPartIdsAny": ["highflow-downpipe"]
+      },
+      "requirePartIds": ["ecu-tune-stage2"],
+      "warnings": [
+        "High-flow downpipe selected: tune support is required to avoid lean conditions.",
+        "Confirm local emissions legality before installing catalyst-adjacent parts."
+      ]
+    },
+    {
+      "id": "rule-stage2-needs-fueling",
+      "description": "Stage 2 tune should include fueling and intercooler support.",
+      "when": {
+        "selectedPartIdsAny": ["ecu-tune-stage2"]
+      },
+      "requirePartIds": ["upgraded-fuel-pump", "intercooler-upgrade", "wideband-o2"],
+      "warnings": [
+        "Stage 2 calibration selected: add fueling, charge cooling, and wideband monitoring."
+      ]
+    },
+    {
+      "id": "rule-track-brakes-required",
+      "description": "Track builds must include brake fluid and pad baseline.",
+      "when": {
+        "goalIds": ["track-ready"]
+      },
+      "requirePartIds": ["dot4-fluid", "performance-brake-pads"],
+      "warnings": [
+        "Track archetype requires fluid and pad prep before power-focused parts."
+      ]
+    },
+    {
+      "id": "rule-coilovers-alignment",
+      "description": "Coilover installs need an alignment follow-up.",
+      "when": {
+        "selectedPartIdsAny": ["coilovers-street"]
+      },
+      "requirePartIds": ["alignment-service"],
+      "warnings": [
+        "Coilovers selected: schedule a post-install alignment to prevent uneven wear."
+      ]
+    },
+    {
+      "id": "rule-low-noise-exhaust-warning",
+      "description": "Low noise tolerance conflicts with loud exhaust setups.",
+      "when": {
+        "noiseToleranceIs": ["Low"],
+        "selectedPartIdsAny": ["catback-exhaust", "highflow-downpipe", "engine-mount-upgrade", "subframe-bushings"]
+      },
+      "warnings": [
+        "Your noise tolerance is set to Low, but selected parts can increase cabin volume/NVH."
+      ]
+    },
+    {
+      "id": "rule-ca-catalyst-warning",
+      "description": "CA region should avoid non-compliant catalyst changes.",
+      "when": {
+        "regions": ["CA"],
+        "selectedPartIdsAny": ["highflow-downpipe"]
+      },
+      "warnings": [
+        "California builds should verify CARB compliance before downpipe changes."
+      ]
+    },
+    {
+      "id": "rule-budget-limits-high-ticket",
+      "description": "Budget-aware warning when expensive parts exceed budget fit.",
+      "when": {
+        "maxBudgetBelow": 2500,
+        "selectedPartIdsAny": ["bbk-front", "coilovers-street", "clutch-stage2"]
+      },
+      "warnings": [
+        "Selected high-ticket parts may exceed your stated budget once labor is included."
+      ],
+      "nextSteps": [
+        "Consider phased installation: handling first, power second.",
+        "Use used-market targets and deal score to time purchases."
+      ]
+    },
+    {
+      "id": "rule-conflict-oem-vs-downpipe",
+      "description": "OEM catted midpipe conflicts with high-flow downpipe.",
+      "when": {
+        "selectedPartIdsAll": ["oem-catted-midpipe", "highflow-downpipe"]
+      },
+      "blockPartIds": ["oem-catted-midpipe"],
+      "warnings": [
+        "OEM catted midpipe removed because it conflicts with the selected high-flow downpipe."
+      ]
+    },
+    {
+      "id": "rule-conflict-clutch",
+      "description": "OEM clutch and Stage 2 clutch are mutually exclusive.",
+      "when": {
+        "selectedPartIdsAll": ["oem-clutch-kit", "clutch-stage2"]
+      },
+      "blockPartIds": ["oem-clutch-kit"],
+      "warnings": [
+        "OEM clutch kit removed because Stage 2 clutch is selected for higher torque load."
+      ]
+    }
+  ]
+}
