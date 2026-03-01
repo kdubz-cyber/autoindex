@@ -434,7 +434,7 @@ a:focus-visible {
 
 .kpi-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 0.6rem;
 }
 
@@ -443,17 +443,21 @@ a:focus-visible {
   border-radius: 0.85rem;
   background: #f7fbff;
   padding: 0.65rem;
+  min-height: 84px;
 }
 
 .kpi-label {
-  font-size: 0.73rem;
+  font-size: 0.79rem;
+  line-height: 1.22;
   color: #64748b;
   font-weight: 700;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .kpi-value {
   margin-top: 0.2rem;
-  font-size: 0.95rem;
+  font-size: 1.03rem;
   font-weight: 800;
 }
 
@@ -485,10 +489,6 @@ a:focus-visible {
     grid-template-columns: 1.25fr 0.95fr;
     align-items: start;
   }
-
-  .kpi-row {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 759px) {
@@ -504,5 +504,15 @@ a:focus-visible {
 
   .header-link {
     white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .kpi-row {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi {
+    min-height: auto;
   }
 }
