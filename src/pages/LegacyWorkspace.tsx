@@ -24,10 +24,7 @@ import {
   ExternalLink,
   User2,
   LogOut,
-  Table2,
-  Database,
-  BarChart3,
-  Layers
+  Table2
 } from 'lucide-react';
 
 const DEFAULT_RENDER_API_BASE = 'https://autoindex-api.onrender.com';
@@ -336,293 +333,629 @@ const MARKET_DEMAND_FACTORS: Array<{ key: DemandKey; label: string; factor: numb
   { key: 'cult_track_proven', label: 'Cult / Track Proven', factor: 1.2 }
 ];
 
-type MatrixMarket = 'U.S.' | 'EU/UK' | 'Japan' | 'Other';
-
-type PartMatrixRow = {
-  decade: string;
-  market: MatrixMarket;
-  modelFamilies: string;
-  rationale: string;
-  partHotspots: string[];
-  primaryChannels: string[];
-  ariBand: 'Very High' | 'High' | 'Moderate';
+type PriceBand = {
+  low: number | null;
+  mid: number | null;
+  high: number | null;
 };
 
-const ARI_SIGNALS: Array<{ code: string; label: string; weight: number; detail: string }> = [
-  {
-    code: 'NRA',
-    label: 'New Replacement Availability',
-    weight: 20,
-    detail: 'Breadth of new/replacement supply across major catalogs.'
-  },
-  {
-    code: 'UOL',
-    label: 'Used OEM Liquidity',
-    weight: 25,
-    detail: 'Used OEM inventory depth and searchable regional supply.'
-  },
-  {
-    code: 'MPO',
-    label: 'Marketplace Pricing Observability',
-    weight: 15,
-    detail: 'Ability to measure sold and active price distributions.'
-  },
-  {
-    code: 'IB',
-    label: 'Interchangeability Breadth',
-    weight: 15,
-    detail: 'Cross-year/platform fitment compatibility breadth.'
-  },
-  {
-    code: 'RRS',
-    label: 'Reproduction/Restoration Support',
-    weight: 15,
-    detail: 'Repro parts depth for older platforms and restoration cycles.'
-  },
-  {
-    code: 'EPD',
-    label: 'Enthusiast/Performance Density',
-    weight: 10,
-    detail: 'Community demand and performance ecosystem vendor coverage.'
-  }
-];
+type PartPriceMatrixRow = {
+  modelFamily: string;
+  part: string;
+  newBand: PriceBand | null;
+  aftermarketBand: PriceBand | null;
+  usedBand: PriceBand | null;
+  evidence: 'ASK' | 'SOLD+ASK';
+  notes?: string;
+};
 
-const MATRIX_SCHEMA_FIELDS = [
-  'Vehicle keys: make/model family, platform/chassis, year range, engine/drivetrain/transmission.',
-  'Part keys: taxonomy, OEM part numbers, aftermarket equivalents, bundle completeness.',
-  'Condition normalization: New/Reman/Used/Core plus A/B/C-grade mapping where applicable.',
-  'Interchange metadata: compatible model-years, trims, engines, and coding/programming constraints.',
-  'Market observations: listing counts, sold counts, quantiles (P25/P50/P75), time-to-sell.',
-  'Scarcity/risk markers: thin-market flags, seasonality, theft-risk/provenance checks.'
-] as const;
+const priceBand = (low: number | null, mid: number | null, high: number | null): PriceBand => ({ low, mid, high });
 
-const MATRIX_HIGH_VALUE_PARTS = [
-  'Powertrain assemblies (engine, transmission, transfer case, differentials)',
-  'Electronics/modules (ECU, BCM, ADAS sensors, clusters)',
-  'Collision-heavy exterior (headlamps, bumpers, doors, tailgates)',
-  'Emissions/high-volatility categories (especially catalytic converters)'
-] as const;
+const PART_PRICE_MATRIX_ROWS: PartPriceMatrixRow[] = [
+  {
+    modelFamily: 'Ford F-150 (2015-2017)',
+    part: 'Engine assembly (5.0 VIN F)',
+    newBand: null,
+    aftermarketBand: priceBand(6738, 6738, 6738),
+    usedBand: priceBand(2891, 3581, 4250),
+    evidence: 'SOLD+ASK',
+    notes: 'Reman anchor in aftermarket/Reman column.'
+  },
+  {
+    modelFamily: 'Ford F-150 (2015-2017)',
+    part: 'Transmission assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(783, 1108, 1175),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Ford F-150 (2015-2017)',
+    part: 'ECU / PCM',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(79, 84, 159),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Ford F-150 (2015-2017)',
+    part: 'Headlamp assembly',
+    newBand: priceBand(1235, 1235, 1235),
+    aftermarketBand: priceBand(94, 246, 426),
+    usedBand: null,
+    evidence: 'ASK',
+    notes: 'New column reflects OEM anchor; aftermarket is economy-to-premium non-OEM.'
+  },
+  {
+    modelFamily: 'Ford F-150 (2015-2017)',
+    part: 'Catalytic converter',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: null,
+    evidence: 'ASK',
+    notes: 'Model-specific stable pricing not available in sampled set.'
+  },
 
-const PART_MATRIX_ROWS: PartMatrixRow[] = [
   {
-    decade: '1970s',
-    market: 'U.S.',
-    modelFamilies:
-      "Mustang, Camaro, Corvette C3, Firebird/Trans Am, Chevelle/Monte Carlo, C/K pickups, F-Series, Jeep CJ",
-    rationale: 'Strong restoration and enthusiast ecosystems with large reproduction support.',
-    partHotspots: ['Sheet metal', 'Interior trim', 'Crate/performance engines'],
-    primaryChannels: ['Restoration vendors', 'Performance catalogs', 'Recycler networks'],
-    ariBand: 'Very High'
+    modelFamily: 'Chevrolet Silverado 1500 (2013)',
+    part: 'Engine assembly (5.3)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(1667, 2250, 3581),
+    evidence: 'ASK'
   },
   {
-    decade: '1970s',
-    market: 'EU/UK',
-    modelFamilies: 'Porsche 911 (classic), VW Golf Mk1, BMW E21, Mercedes W123, Volvo 240',
-    rationale: 'Long lifecycle platforms with strong specialist supply in Europe.',
-    partHotspots: ['Body/interior restoration', 'Engine ancillaries', 'Trim'],
-    primaryChannels: ['EU specialist retailers', 'Marketplace comps', 'Recycler inventories'],
-    ariBand: 'High'
+    modelFamily: 'Chevrolet Silverado 1500 (2013)',
+    part: 'Transmission assembly',
+    newBand: priceBand(4214, 4214, 4214),
+    aftermarketBand: null,
+    usedBand: priceBand(1532, 1739, 1971),
+    evidence: 'ASK'
   },
   {
-    decade: '1970s',
-    market: 'Japan',
-    modelFamilies: 'Datsun/Nissan Z (S30), Toyota Celica, Land Cruiser 40/55/60, Mazda rotary lineage',
-    rationale: 'Enduring enthusiast demand and import/JDM-focused supply channels.',
-    partHotspots: ['Engine/performance', 'Rare trim', 'Suspension'],
-    primaryChannels: ['JDM suppliers', 'Marketplace comps', 'Specialty import vendors'],
-    ariBand: 'High'
+    modelFamily: 'Chevrolet Silverado 1500 (2013)',
+    part: 'ECU / ECM',
+    newBand: null,
+    aftermarketBand: priceBand(187, 187, 187),
+    usedBand: null,
+    evidence: 'ASK'
   },
   {
-    decade: '1970s',
-    market: 'Other',
-    modelFamilies: 'Land Rover Series/Defender lineage, early Nissan Patrol',
-    rationale: 'Global off-road communities keep long-tail demand active.',
-    partHotspots: ['Driveline', 'Body panels', 'Off-road accessories'],
-    primaryChannels: ['Regional specialists', 'Recycler exports', 'Off-road marketplaces'],
-    ariBand: 'Moderate'
+    modelFamily: 'Chevrolet Silverado 1500 (2013)',
+    part: 'Headlamp assembly',
+    newBand: null,
+    aftermarketBand: priceBand(61, 120, 200),
+    usedBand: null,
+    evidence: 'ASK'
   },
   {
-    decade: '1980s',
-    market: 'U.S.',
-    modelFamilies: 'Mustang Fox, Camaro/Firebird 3rd gen, Corvette C4, Square-body C/K, F-Series, Wrangler YJ',
-    rationale: 'High parts interchange and deep domestic truck/muscle support.',
-    partHotspots: ['Powertrain swaps', 'Suspension', 'Body restoration'],
-    primaryChannels: ['Performance retailers', 'Recycler networks', 'Classified marketplaces'],
-    ariBand: 'Very High'
+    modelFamily: 'Chevrolet Silverado 1500 (2013)',
+    part: 'Catalytic converter',
+    newBand: null,
+    aftermarketBand: priceBand(180, 180, 180),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'Jeep Wrangler JK (2012)',
+    part: 'Engine assembly (3.6L)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(4122, 4122, 4122),
+    evidence: 'ASK'
   },
   {
-    decade: '1980s',
-    market: 'EU/UK',
-    modelFamilies: 'BMW E30/E28, Mercedes W124, VW Golf Mk2, Porsche 944/928',
-    rationale: 'Strong specialist vendor density and active enthusiast ownership.',
-    partHotspots: ['Engine electronics', 'Cooling/fuel systems', 'Body trim'],
-    primaryChannels: ['EU catalog specialists', 'Marketplace comps', 'Recycler supply'],
-    ariBand: 'High'
+    modelFamily: 'Jeep Wrangler JK (2012)',
+    part: 'Transmission assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(1626, 1798, 1971),
+    evidence: 'ASK'
   },
   {
-    decade: '1980s',
-    market: 'Japan',
-    modelFamilies: 'Supra Mk3, Z31, RX-7 FC, Civic/CRX, MR2 AW11',
-    rationale: 'Tuner ecosystem depth and sustained demand in motorsport circles.',
-    partHotspots: ['Turbo systems', 'ECU/components', 'Suspension'],
-    primaryChannels: ['JDM performance vendors', 'Auction/export channels', 'Marketplaces'],
-    ariBand: 'High'
+    modelFamily: 'Jeep Wrangler JK (2012)',
+    part: 'PCM / ECU',
+    newBand: null,
+    aftermarketBand: priceBand(794, 794, 794),
+    usedBand: priceBand(129, 240, 350),
+    evidence: 'ASK'
   },
   {
-    decade: '1980s',
-    market: 'Other',
-    modelFamilies: 'Holden Commodore era platforms, global Hilux, early G-Class',
-    rationale: 'Regional strength with selective global export demand.',
-    partHotspots: ['Driveline', 'Body/interior', 'Utility accessories'],
-    primaryChannels: ['Regional vendors', 'Recyclers', 'Classified channels'],
-    ariBand: 'Moderate'
+    modelFamily: 'Jeep Wrangler JK (2012)',
+    part: 'Headlight assembly',
+    newBand: null,
+    aftermarketBand: priceBand(110, 186, 769),
+    usedBand: null,
+    evidence: 'ASK'
   },
   {
-    decade: '1990s',
-    market: 'U.S.',
-    modelFamilies: 'F-Series, Silverado GMT400, Ram 2nd gen, Wrangler TJ, Cherokee XJ, Corvette C5, Mustang SN95',
-    rationale: 'Large fleet populations and very liquid used/new replacement markets.',
-    partHotspots: ['Engines/transmissions', 'Axles', 'Lighting/body'],
-    primaryChannels: ['Recycler networks', 'Major catalog retailers', 'Marketplace sold comps'],
-    ariBand: 'Very High'
+    modelFamily: 'Jeep Wrangler JK (2012)',
+    part: 'Catalytic converter',
+    newBand: null,
+    aftermarketBand: priceBand(238, 259, 274),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'Toyota Tacoma (2013)',
+    part: 'Engine assembly (4.0L)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(3821, 4250, 5000),
+    evidence: 'ASK'
   },
   {
-    decade: '1990s',
-    market: 'EU/UK',
-    modelFamilies: 'BMW E36/E34, Golf Mk3/Mk4, Audi A4 B5, Mercedes W202, Porsche 993/986',
-    rationale: 'Platform-level parts ecosystems with strong specialist support.',
-    partHotspots: ['Electronics modules', 'Cooling systems', 'Suspension'],
-    primaryChannels: ['EU parts specialists', 'Used OEM recyclers', 'Marketplace comps'],
-    ariBand: 'High'
+    modelFamily: 'Toyota Tacoma (2013)',
+    part: 'Transmission assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(1022, 1022, 1022),
+    evidence: 'ASK'
   },
   {
-    decade: '1990s',
-    market: 'Japan',
-    modelFamilies:
-      'Civic EG/EK, Integra, Miata NA, 240SX S13/S14, Skyline R32/R33, Supra Mk4, Impreza GC, Evo I–VI',
-    rationale: 'One of the densest tuner aftermarkets for 1990s platforms.',
-    partHotspots: ['Turbo/drivetrain', 'Engine management', 'Body conversion parts'],
-    primaryChannels: ['JDM vendors', 'Performance catalogs', 'Marketplace sold comps'],
-    ariBand: 'Very High'
+    modelFamily: 'Toyota Tacoma (2013)',
+    part: 'PCM / ECU',
+    newBand: null,
+    aftermarketBand: priceBand(312, 500, 500),
+    usedBand: priceBand(151, 192, 300),
+    evidence: 'ASK'
   },
   {
-    decade: '1990s',
-    market: 'Other',
-    modelFamilies: 'Land Cruiser 80, Patrol Y60/Y61, Defender 90/110',
-    rationale: 'Long-life off-road fleets sustain replacement and used OEM demand.',
-    partHotspots: ['Driveline', 'Body panels', 'Suspension/off-road kits'],
-    primaryChannels: ['Regional specialists', 'Recycler exports', 'Marketplace supply'],
-    ariBand: 'High'
+    modelFamily: 'Toyota Tacoma (2013)',
+    part: 'Headlight assembly',
+    newBand: null,
+    aftermarketBand: priceBand(94, 188, 769),
+    usedBand: null,
+    evidence: 'ASK'
   },
   {
-    decade: '2000s',
-    market: 'U.S.',
-    modelFamilies:
-      'Silverado/Sierra GMT800/GMT900, F-150, Mustang S197, Corvette C6, Challenger/Charger, Wrangler JK, Tacoma',
-    rationale: 'Extremely liquid truck and performance channels with broad catalog coverage.',
-    partHotspots: ['Powertrain assemblies', 'Collision parts', 'Performance upgrades'],
-    primaryChannels: ['Retail catalogs', 'Recycler inventories', 'Marketplace sold/active comps'],
-    ariBand: 'Very High'
+    modelFamily: 'Toyota Tacoma (2013)',
+    part: 'Catalytic converter',
+    newBand: null,
+    aftermarketBand: priceBand(297, 319, 820),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'Toyota Camry (2012-2015)',
+    part: 'Engine assembly (2.5L)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(1538, 1538, 1538),
+    evidence: 'ASK'
   },
   {
-    decade: '2000s',
-    market: 'EU/UK',
-    modelFamilies: 'BMW E46/E90, Golf Mk5, Audi A4 B6/B7, Mercedes W203, Porsche 997/987, MINI R-chassis',
-    rationale: 'Deep specialist parts ecosystems and strong enthusiast support.',
-    partHotspots: ['ECU/electronics', 'Engine ancillaries', 'Body trim'],
-    primaryChannels: ['EU specialty vendors', 'Recycler channels', 'Marketplace comps'],
-    ariBand: 'High'
+    modelFamily: 'Toyota Camry (2012-2015)',
+    part: 'Transmission assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(1022, 1131, 1839),
+    evidence: 'ASK'
   },
   {
-    decade: '2000s',
-    market: 'Japan',
-    modelFamilies: 'WRX/STI GD, Evo VII–X, 350Z, S2000, RX-8, RSX, Forester SG',
-    rationale: 'High modification volume drives broad aftermarket coverage and turnover.',
-    partHotspots: ['Turbo engines', 'Manual transmissions', 'Suspension/brakes'],
-    primaryChannels: ['JDM/US performance vendors', 'Recycler markets', 'Marketplace sold comps'],
-    ariBand: 'Very High'
+    modelFamily: 'Toyota Camry (2012-2015)',
+    part: 'ECU / ECM',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(71, 73, 75),
+    evidence: 'ASK'
   },
   {
-    decade: '2000s',
-    market: 'Other',
-    modelFamilies: 'Prado, Amarok, Australian Falcon platforms',
-    rationale: 'Strong regional channels with moderate global demand.',
-    partHotspots: ['Driveline', 'Body/collision', 'Utility accessories'],
-    primaryChannels: ['Regional catalog supply', 'Recyclers', 'Marketplaces'],
-    ariBand: 'Moderate'
+    modelFamily: 'Toyota Camry (2012-2015)',
+    part: 'Headlight assembly',
+    newBand: null,
+    aftermarketBand: priceBand(38, 58, 116),
+    usedBand: null,
+    evidence: 'ASK'
   },
   {
-    decade: '2010s',
-    market: 'U.S.',
-    modelFamilies:
-      'Mustang S550, Camaro 5th/6th, Challenger/Charger, Corvette C7, Wrangler JK/JL, F-150, Silverado/Sierra, Tacoma 3rd gen',
-    rationale: 'Modern high-volume platforms with high mod culture and strong replacement demand.',
-    partHotspots: ['Lighting/body', 'Performance bolt-ons', 'Electronics/modules'],
-    primaryChannels: ['Retail catalogs', 'Recycler networks', 'Marketplace sold data'],
-    ariBand: 'Very High'
+    modelFamily: 'Toyota Camry (2012-2015)',
+    part: 'Catalytic converter',
+    newBand: priceBand(895, 1042, 1200),
+    aftermarketBand: priceBand(97, 388, 992),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'Honda Civic (2016)',
+    part: 'Engine assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(407, 783, 908),
+    evidence: 'ASK'
   },
   {
-    decade: '2010s',
-    market: 'EU/UK',
-    modelFamilies: 'BMW F30, Golf Mk7, Audi A4 B8/B9, Mercedes W205, Porsche 991/981',
-    rationale: 'Large specialist infrastructure and stable enthusiast demand.',
-    partHotspots: ['Engine management', 'Suspension', 'Body/interior'],
-    primaryChannels: ['EU specialists', 'Recyclers', 'Marketplace comps'],
-    ariBand: 'High'
+    modelFamily: 'Honda Civic (2016)',
+    part: 'Transmission assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(476, 533, 901),
+    evidence: 'ASK'
   },
   {
-    decade: '2010s',
-    market: 'Japan',
-    modelFamilies: 'BRZ/86, WRX VA, Civic Type R ecosystem, GT-R R35, 370Z, Miata ND',
-    rationale: 'Strong enthusiast liquidity and active performance upgrade cycles.',
-    partHotspots: ['Turbo/drivetrain', 'Aero/body kits', 'Brake/suspension'],
-    primaryChannels: ['JDM performance channels', 'Marketplaces', 'Specialty resellers'],
-    ariBand: 'Very High'
+    modelFamily: 'Honda Civic (2016)',
+    part: 'ECM',
+    newBand: priceBand(372, 430, 621),
+    aftermarketBand: null,
+    usedBand: priceBand(121, 130, 161),
+    evidence: 'ASK'
   },
   {
-    decade: '2010s',
-    market: 'Other',
-    modelFamilies: 'Hilux, Ranger, Land Cruiser 200',
-    rationale: 'Global utility fleets sustain parts turnover and broad accessory demand.',
-    partHotspots: ['Driveline', 'Suspension', 'Body/collision'],
-    primaryChannels: ['Regional catalogs', 'Recyclers', 'Export marketplaces'],
-    ariBand: 'High'
+    modelFamily: 'Honda Civic (2016)',
+    part: 'Headlight assembly',
+    newBand: null,
+    aftermarketBand: priceBand(94, 219, 654),
+    usedBand: null,
+    evidence: 'ASK'
   },
   {
-    decade: '2020s',
-    market: 'U.S.',
-    modelFamilies: 'Bronco, Wrangler 4xe, Gladiator, Corvette C8, GR86, Maverick, late-model trucks',
-    rationale: 'Rapid accessory adoption and strong early-cycle aftermarket expansion.',
-    partHotspots: ['Accessory packages', 'Body/collision', 'Electronics'],
-    primaryChannels: ['Retail/performance catalogs', 'Marketplace comps', 'Recycler intake'],
-    ariBand: 'High'
+    modelFamily: 'Honda Civic (2016)',
+    part: 'Catalytic converter',
+    newBand: null,
+    aftermarketBand: priceBand(204, 219, 508),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'Subaru WRX (2015)',
+    part: 'Engine assembly (2.0T)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(1904, 4536, 5200),
+    evidence: 'ASK'
   },
   {
-    decade: '2020s',
-    market: 'EU/UK',
-    modelFamilies: 'Porsche 992, BMW G-series performance trims, Golf Mk8',
-    rationale: 'Strong demand but growing coding complexity can narrow interchange confidence.',
-    partHotspots: ['Electronics/modules', 'Performance suspension', 'Body components'],
-    primaryChannels: ['EU specialists', 'Marketplace comps', 'Authorized/OEM channels'],
-    ariBand: 'High'
+    modelFamily: 'Subaru WRX (2015)',
+    part: 'Transmission assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(1707, 1707, 1707),
+    evidence: 'ASK'
   },
   {
-    decade: '2020s',
-    market: 'Japan',
-    modelFamilies: 'GR86/BRZ Gen2, GR Corolla, Nissan Z RZ34, WRX VB',
-    rationale: 'High demand density and active early-life enthusiast modification.',
-    partHotspots: ['Performance powertrain', 'Brakes/suspension', 'Aero/trim'],
-    primaryChannels: ['JDM/performance vendors', 'Marketplaces', 'Specialty channels'],
-    ariBand: 'High'
+    modelFamily: 'Subaru WRX (2015)',
+    part: 'ECU',
+    newBand: null,
+    aftermarketBand: priceBand(450, 450, 450),
+    usedBand: priceBand(55, 155, 275),
+    evidence: 'ASK'
   },
   {
-    decade: '2020s',
-    market: 'Other',
-    modelFamilies: 'Global off-road mainstream (Hilux, Prado, Patrol)',
-    rationale: 'Strong utility demand with region-dependent used OEM liquidity.',
-    partHotspots: ['Driveline', 'Suspension', 'Body/collision'],
-    primaryChannels: ['Regional suppliers', 'Recyclers', 'Marketplace channels'],
-    ariBand: 'Moderate'
+    modelFamily: 'Subaru WRX (2015)',
+    part: 'Headlight assembly',
+    newBand: null,
+    aftermarketBand: priceBand(202, 234, 319),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Subaru WRX (2015)',
+    part: 'Catalytic converter',
+    newBand: null,
+    aftermarketBand: priceBand(272, 281, 291),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'Volkswagen Golf Mk7 (2015)',
+    part: 'Engine assembly (1.8T)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(1175, 1942, 2300),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Volkswagen Golf Mk7 (2015)',
+    part: 'Transmission assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(1100, 1100, 1100),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Volkswagen Golf Mk7 (2015)',
+    part: 'ECU / ECM',
+    newBand: null,
+    aftermarketBand: priceBand(555, 555, 555),
+    usedBand: priceBand(70, 130, 159),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Volkswagen Golf Mk7 (2015)',
+    part: 'Headlight assembly',
+    newBand: null,
+    aftermarketBand: priceBand(38, 114, 212),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Volkswagen Golf Mk7 (2015)',
+    part: 'Catalytic converter',
+    newBand: priceBand(2095, 2095, 2095),
+    aftermarketBand: priceBand(195, 528, 700),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'Nissan 350Z (2006)',
+    part: 'Engine assembly (VQ35)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(1610, 3567, 3567),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Nissan 350Z (2006)',
+    part: 'Transmission assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(295, 752, 895),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Nissan 350Z (2006)',
+    part: 'ECU / PCM',
+    newBand: null,
+    aftermarketBand: priceBand(342, 383, 424),
+    usedBand: priceBand(100, 220, 350),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Nissan 350Z (2006)',
+    part: 'Headlight assembly',
+    newBand: null,
+    aftermarketBand: priceBand(98, 158, 654),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Nissan 350Z (2006)',
+    part: 'Catalytic converter',
+    newBand: null,
+    aftermarketBand: priceBand(296, 425, 1923),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'Subaru BRZ / Scion FR-S (2013)',
+    part: 'Engine assembly (2.0L)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(4064, 4064, 4064),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Subaru BRZ / Scion FR-S (2013)',
+    part: 'Transmission assembly (MT)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(266, 332, 470),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Subaru BRZ / Scion FR-S (2013)',
+    part: 'ECU / EGI control',
+    newBand: priceBand(694, 700, 706),
+    aftermarketBand: null,
+    usedBand: null,
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Subaru BRZ / Scion FR-S (2013)',
+    part: 'Headlight assembly',
+    newBand: null,
+    aftermarketBand: priceBand(342, 720, 1322),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Subaru BRZ / Scion FR-S (2013)',
+    part: 'Catalytic converter',
+    newBand: null,
+    aftermarketBand: priceBand(204, 500, 842),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'Mazda MX-5 Miata NA (1990-1993)',
+    part: 'Engine assembly (1.6L)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(300, 1150, 1800),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Mazda MX-5 Miata NA (1990-1993)',
+    part: 'Transmission assembly (5-speed)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(250, 600, 895),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Mazda MX-5 Miata NA (1990-1993)',
+    part: 'ECU',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(155, 205, 220),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Mazda MX-5 Miata NA (1990-1993)',
+    part: 'Headlight assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: null,
+    evidence: 'ASK',
+    notes: 'No stable sampled pricing anchor captured.'
+  },
+  {
+    modelFamily: 'Mazda MX-5 Miata NA (1990-1993)',
+    part: 'Catalytic converter',
+    newBand: null,
+    aftermarketBand: priceBand(146, 159, 333),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'Ford Mustang S197 (2011-2014)',
+    part: 'Engine assembly (5.0 VIN F)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(5329, 5329, 5329),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Ford Mustang S197 (2011-2014)',
+    part: 'Transmission assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: null,
+    evidence: 'ASK',
+    notes: 'Listing exists but sampled pricing spread was not stable.'
+  },
+  {
+    modelFamily: 'Ford Mustang S197 (2011-2014)',
+    part: 'ECM',
+    newBand: priceBand(661, 995, 995),
+    aftermarketBand: priceBand(321, 321, 321),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Ford Mustang S197 (2011-2014)',
+    part: 'Headlight assembly',
+    newBand: null,
+    aftermarketBand: priceBand(110, 252, 1398),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Ford Mustang S197 (2011-2014)',
+    part: 'Catalytic converter',
+    newBand: null,
+    aftermarketBand: priceBand(153, 203, 4087),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'BMW 3-Series E46 325i (2003-2005)',
+    part: 'Engine assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(600, 1500, 2200),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'BMW 3-Series E46 325i (2003-2005)',
+    part: 'Transmission assembly',
+    newBand: null,
+    aftermarketBand: priceBand(2777, 2777, 2777),
+    usedBand: priceBand(894, 1197, 3114),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'BMW 3-Series E46 325i (2003-2005)',
+    part: 'ECU / DME',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(44, 72, 77),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'BMW 3-Series E46 325i (2003-2005)',
+    part: 'Headlight assembly',
+    newBand: null,
+    aftermarketBand: priceBand(156, 212, 300),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'BMW 3-Series E46 325i (2003-2005)',
+    part: 'Catalytic converter',
+    newBand: priceBand(1184, 1184, 1184),
+    aftermarketBand: priceBand(160, 700, 900),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'Toyota 4Runner (2014)',
+    part: 'Engine assembly (4.0 1GRFE)',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(4685, 4685, 4685),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Toyota 4Runner (2014)',
+    part: 'Transmission assembly',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: null,
+    evidence: 'ASK',
+    notes: 'Listing exists but sampled pricing spread was not stable.'
+  },
+  {
+    modelFamily: 'Toyota 4Runner (2014)',
+    part: 'ECU / PCM',
+    newBand: null,
+    aftermarketBand: null,
+    usedBand: priceBand(81, 140, 195),
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Toyota 4Runner (2014)',
+    part: 'Headlight assembly',
+    newBand: null,
+    aftermarketBand: priceBand(98, 163, 769),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Toyota 4Runner (2014)',
+    part: 'Catalytic converter / exhaust manifold',
+    newBand: priceBand(1420, 1420, 1420),
+    aftermarketBand: priceBand(195, 653, 900),
+    usedBand: null,
+    evidence: 'ASK'
+  },
+
+  {
+    modelFamily: 'Chevrolet Camaro Classic (1970-1981)',
+    part: 'Quarter panel (full)',
+    newBand: priceBand(437, 491, 509),
+    aftermarketBand: priceBand(116, 200, 350),
+    usedBand: null,
+    evidence: 'ASK',
+    notes: 'Aftermarket/reman column includes patch/partial panel range.'
+  },
+  {
+    modelFamily: 'Chevrolet Camaro Classic (1970-1981)',
+    part: 'Weatherstrip kit',
+    newBand: priceBand(115, 182, 240),
+    aftermarketBand: null,
+    usedBand: null,
+    evidence: 'ASK'
+  },
+  {
+    modelFamily: 'Chevrolet Camaro Classic (1970-1981)',
+    part: 'Crate/performance engine (proxy)',
+    newBand: priceBand(8699, 8699, 8699),
+    aftermarketBand: null,
+    usedBand: null,
+    evidence: 'ASK'
   }
 ];
 
@@ -1705,40 +2038,67 @@ function PartMatrixPanel({
   setQuery: (value: string) => void;
   onOpenMarketplace: () => void;
 }) {
-  const [marketFilter, setMarketFilter] = useState<'All' | MatrixMarket>('All');
-  const [decadeFilter, setDecadeFilter] = useState<'All' | string>('All');
-
-  const decades = useMemo(
-    () => ['All', ...Array.from(new Set(PART_MATRIX_ROWS.map((row) => row.decade)))],
-    []
-  );
+  const [modelFilter, setModelFilter] = useState<'All' | string>('All');
+  const [partFilter, setPartFilter] = useState<'All' | string>('All');
+  const [conditionFilter, setConditionFilter] = useState<'All' | 'New' | 'Aftermarket/Reman' | 'Used'>('All');
 
   const normalizedQuery = query.trim().toLowerCase();
 
+  const modelOptions = useMemo(
+    () => ['All', ...Array.from(new Set(PART_PRICE_MATRIX_ROWS.map((row) => row.modelFamily)))],
+    []
+  );
+
+  const partOptions = useMemo(
+    () => ['All', ...Array.from(new Set(PART_PRICE_MATRIX_ROWS.map((row) => row.part)))],
+    []
+  );
+
+  const hasBandValue = (band: PriceBand | null) =>
+    Boolean(band && [band.low, band.mid, band.high].some((value) => typeof value === 'number'));
+
+  const formatBand = (band: PriceBand | null) => {
+    if (!hasBandValue(band)) return '—';
+    return [band?.low, band?.mid, band?.high].map((value) => (value == null ? '—' : fmtMoney(value))).join(' / ');
+  };
+
+  const median = (band: PriceBand | null) => (band?.mid == null ? null : band.mid);
+
+  const formatDelta = (base: number | null, compare: number | null) => {
+    if (base == null || compare == null) return '—';
+    const delta = compare - base;
+    return `${delta >= 0 ? '+' : '-'}${fmtMoney(Math.abs(delta))}`;
+  };
+
+  const deltaTone = (base: number | null, compare: number | null) => {
+    if (base == null || compare == null) return 'text-zinc-500';
+    const delta = compare - base;
+    if (delta > 0) return 'text-rose-700';
+    if (delta < 0) return 'text-emerald-700';
+    return 'text-zinc-700';
+  };
+
   const filteredRows = useMemo(() => {
-    return PART_MATRIX_ROWS.filter((row) => {
-      if (marketFilter !== 'All' && row.market !== marketFilter) return false;
-      if (decadeFilter !== 'All' && row.decade !== decadeFilter) return false;
+    return PART_PRICE_MATRIX_ROWS.filter((row) => {
+      if (modelFilter !== 'All' && row.modelFamily !== modelFilter) return false;
+      if (partFilter !== 'All' && row.part !== partFilter) return false;
+      if (conditionFilter === 'New' && !hasBandValue(row.newBand)) return false;
+      if (conditionFilter === 'Aftermarket/Reman' && !hasBandValue(row.aftermarketBand)) return false;
+      if (conditionFilter === 'Used' && !hasBandValue(row.usedBand)) return false;
       if (!normalizedQuery) return true;
-      const haystack = [
-        row.decade,
-        row.market,
-        row.modelFamilies,
-        row.rationale,
-        row.partHotspots.join(' '),
-        row.primaryChannels.join(' ')
-      ]
-        .join(' ')
-        .toLowerCase();
+      const haystack = [row.modelFamily, row.part, row.notes ?? ''].join(' ').toLowerCase();
       return haystack.includes(normalizedQuery);
     });
-  }, [decadeFilter, marketFilter, normalizedQuery]);
+  }, [conditionFilter, modelFilter, normalizedQuery, partFilter]);
 
-  const ariClass = (band: PartMatrixRow['ariBand']) => {
-    if (band === 'Very High') return 'bg-emerald-50 text-emerald-900 border-emerald-200';
-    if (band === 'High') return 'bg-sky-50 text-sky-900 border-sky-200';
-    return 'bg-amber-50 text-amber-900 border-amber-200';
-  };
+  const modelCount = useMemo(() => new Set(PART_PRICE_MATRIX_ROWS.map((row) => row.modelFamily)).size, []);
+  const rowCountWithAllConditions = useMemo(
+    () =>
+      PART_PRICE_MATRIX_ROWS.filter(
+        (row) => hasBandValue(row.newBand) && hasBandValue(row.aftermarketBand) && hasBandValue(row.usedBand)
+      ).length,
+    []
+  );
 
   return (
     <div className="space-y-6">
@@ -1746,11 +2106,10 @@ function PartMatrixPanel({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="text-xs font-bold text-zinc-500">Part Matrix</div>
-            <div className="mt-1 text-2xl font-black">Car Part Fair Market Value Matrix (1970–2026)</div>
+            <div className="mt-1 text-2xl font-black">Price Difference Matrix (New vs Aftermarket/Reman vs Used)</div>
             <div className="mt-2 max-w-4xl text-sm text-zinc-600">
-              This matrix converts fair value from a single estimate into a distribution by platform, part family, condition,
-              interchange, market liquidity, and demand pressure. Use the global search to filter model families, channels,
-              and risk hotspots.
+              This table focuses only on condition-based price differences for each car/part row in the matrix. Values are
+              shown as low / median / high estimated worth bands in USD.
             </div>
           </div>
           <button
@@ -1764,24 +2123,23 @@ function PartMatrixPanel({
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
             <div className="inline-flex items-center gap-2 text-xs font-black text-zinc-500">
-              <Table2 className="h-4 w-4" /> Matrix coverage
+              <Table2 className="h-4 w-4" /> Model families
             </div>
-            <div className="mt-2 text-sm text-zinc-700">{PART_MATRIX_ROWS.length} prioritized model-market rows</div>
+            <div className="mt-2 text-sm text-zinc-700">{modelCount} models represented</div>
           </div>
           <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
             <div className="inline-flex items-center gap-2 text-xs font-black text-zinc-500">
-              <BarChart3 className="h-4 w-4" /> ARI method
+              <TrendingUp className="h-4 w-4" /> Part rows
+            </div>
+            <div className="mt-2 text-sm text-zinc-700">{PART_PRICE_MATRIX_ROWS.length} car-part rows with condition bands</div>
+          </div>
+          <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
+            <div className="inline-flex items-center gap-2 text-xs font-black text-zinc-500">
+              <Tag className="h-4 w-4" /> Full condition coverage
             </div>
             <div className="mt-2 text-sm text-zinc-700">
-              Weighted score from New supply, Used liquidity, Pricing observability, Interchange, Reproduction, and
-              Enthusiast density.
+              {rowCountWithAllConditions} rows currently have New + Aftermarket/Reman + Used populated.
             </div>
-          </div>
-          <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
-            <div className="inline-flex items-center gap-2 text-xs font-black text-zinc-500">
-              <Database className="h-4 w-4" /> FMV output
-            </div>
-            <div className="mt-2 text-sm text-zinc-700">Target output is FMV band (P25/P50/P75) plus confidence score.</div>
           </div>
         </div>
       </div>
@@ -1789,89 +2147,117 @@ function PartMatrixPanel({
       <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-5 shadow-sm sm:p-6">
         <div className="text-sm font-black">Integrated search + filters</div>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <label className="text-xs font-bold text-zinc-600">Search Part Matrix (shared with top search)</label>
             <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2">
               <Search className="h-4 w-4 text-zinc-500" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search model family, market, parts, or channel..."
+                placeholder="Search model family or part..."
                 className="w-full bg-transparent text-sm outline-none"
               />
             </div>
           </div>
           <div>
-            <label className="text-xs font-bold text-zinc-600">Decade</label>
+            <label className="text-xs font-bold text-zinc-600">Model family</label>
             <select
-              value={decadeFilter}
-              onChange={(e) => setDecadeFilter(e.target.value)}
+              value={modelFilter}
+              onChange={(e) => setModelFilter(e.target.value)}
               className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
             >
-              {decades.map((d) => (
-                <option key={d} value={d}>
-                  {d}
+              {modelOptions.map((model) => (
+                <option key={model} value={model}>
+                  {model}
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="text-xs font-bold text-zinc-600">Market</label>
+            <label className="text-xs font-bold text-zinc-600">Part type</label>
             <select
-              value={marketFilter}
-              onChange={(e) => setMarketFilter(e.target.value as 'All' | MatrixMarket)}
+              value={partFilter}
+              onChange={(e) => setPartFilter(e.target.value)}
               className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
             >
-              <option value="All">All</option>
-              <option value="U.S.">U.S.</option>
-              <option value="EU/UK">EU/UK</option>
-              <option value="Japan">Japan</option>
-              <option value="Other">Other</option>
+              {partOptions.map((part) => (
+                <option key={part} value={part}>
+                  {part}
+                </option>
+              ))}
             </select>
           </div>
-          <div className="md:col-span-2" />
+          <div>
+            <label className="text-xs font-bold text-zinc-600">Condition availability</label>
+            <select
+              value={conditionFilter}
+              onChange={(e) => setConditionFilter(e.target.value as 'All' | 'New' | 'Aftermarket/Reman' | 'Used')}
+              className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
+            >
+              <option value="All">All rows</option>
+              <option value="New">Rows with New pricing</option>
+              <option value="Aftermarket/Reman">Rows with Aftermarket/Reman pricing</option>
+              <option value="Used">Rows with Used pricing</option>
+            </select>
+          </div>
           <div className="text-right text-xs font-bold text-zinc-500">
-            Showing {filteredRows.length} of {PART_MATRIX_ROWS.length}
+            Showing {filteredRows.length} of {PART_PRICE_MATRIX_ROWS.length}
           </div>
         </div>
       </div>
 
       <div className="overflow-hidden rounded-[32px] border border-[#dbe3ef] bg-white shadow-sm">
         <div className="border-b border-[#dbe3ef] bg-[#f5f7fb] px-5 py-4">
-          <div className="text-sm font-black">Prioritized model families by decade and market</div>
+          <div className="text-sm font-black">Price differences by car part condition</div>
           <div className="mt-1 text-xs text-zinc-600">
-            Focused on high-liquidity platforms where FMV confidence is strongest.
+            L / M / H = Low / Median / High estimated worth in USD.
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-[980px] w-full text-left">
+          <table className="min-w-[1240px] w-full text-left">
             <thead className="text-xs uppercase tracking-wide text-zinc-500">
               <tr>
-                <th className="px-4 py-3">Decade</th>
-                <th className="px-4 py-3">Market</th>
-                <th className="px-4 py-3">Model families</th>
-                <th className="px-4 py-3">Primary rationale</th>
-                <th className="px-4 py-3">Part hotspots</th>
-                <th className="px-4 py-3">Channel evidence</th>
-                <th className="px-4 py-3">ARI band</th>
+                <th className="px-4 py-3">Model family</th>
+                <th className="px-4 py-3">Part</th>
+                <th className="px-4 py-3">New worth (L / M / H)</th>
+                <th className="px-4 py-3">Aftermarket/Reman worth (L / M / H)</th>
+                <th className="px-4 py-3">Used worth (L / M / H)</th>
+                <th className="px-4 py-3">Median difference</th>
+                <th className="px-4 py-3">Evidence</th>
               </tr>
             </thead>
             <tbody className="text-sm">
-              {filteredRows.map((row, idx) => (
-                <tr key={`${row.decade}-${row.market}-${idx}`} className="border-t border-[#edf2f8] align-top">
-                  <td className="px-4 py-3 font-bold text-zinc-800">{row.decade}</td>
-                  <td className="px-4 py-3 text-zinc-700">{row.market}</td>
-                  <td className="px-4 py-3 text-zinc-800">{row.modelFamilies}</td>
-                  <td className="px-4 py-3 text-zinc-700">{row.rationale}</td>
-                  <td className="px-4 py-3 text-zinc-700">{row.partHotspots.join(' • ')}</td>
-                  <td className="px-4 py-3 text-zinc-700">{row.primaryChannels.join(' • ')}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${ariClass(row.ariBand)}`}>
-                      {row.ariBand}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {filteredRows.map((row, idx) => {
+                const newMid = median(row.newBand);
+                const aftermarketMid = median(row.aftermarketBand);
+                const usedMid = median(row.usedBand);
+                const usedVsNew = formatDelta(newMid, usedMid);
+                const usedVsAftermarket = formatDelta(aftermarketMid, usedMid);
+
+                return (
+                  <tr key={`${row.modelFamily}-${row.part}-${idx}`} className="border-t border-[#edf2f8] align-top">
+                    <td className="px-4 py-3 font-bold text-zinc-800">{row.modelFamily}</td>
+                    <td className="px-4 py-3 text-zinc-700">
+                      <div>{row.part}</div>
+                      {row.notes ? <div className="mt-1 text-xs text-zinc-500">{row.notes}</div> : null}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-700">{formatBand(row.newBand)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{formatBand(row.aftermarketBand)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{formatBand(row.usedBand)}</td>
+                    <td className="px-4 py-3">
+                      <div className={`text-xs font-black ${deltaTone(newMid, usedMid)}`}>Used vs New: {usedVsNew}</div>
+                      <div className={`mt-1 text-xs font-black ${deltaTone(aftermarketMid, usedMid)}`}>
+                        Used vs Aftermarket: {usedVsAftermarket}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex rounded-full border border-[#dbe3ef] bg-white px-2.5 py-1 text-xs font-black text-zinc-700">
+                        {row.evidence}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
               {filteredRows.length === 0 ? (
                 <tr>
                   <td className="px-4 py-8 text-sm text-zinc-600" colSpan={7}>
@@ -1883,49 +2269,9 @@ function PartMatrixPanel({
           </table>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-5 shadow-sm sm:p-6">
-          <div className="inline-flex items-center gap-2 text-sm font-black">
-            <Layers className="h-4 w-4" /> ARI scoring model (0–100)
-          </div>
-          <div className="mt-4 space-y-3">
-            {ARI_SIGNALS.map((signal) => (
-              <div key={signal.code} className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-black text-zinc-900">
-                    {signal.code} • {signal.label}
-                  </div>
-                  <span className="rounded-full border border-[#dbe3ef] bg-white px-2 py-0.5 text-xs font-extrabold">
-                    {signal.weight}%
-                  </span>
-                </div>
-                <div className="mt-1 text-xs text-zinc-600">{signal.detail}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-5 shadow-sm sm:p-6">
-          <div className="inline-flex items-center gap-2 text-sm font-black">
-            <Database className="h-4 w-4" /> FMV matrix schema and risk controls
-          </div>
-          <div className="mt-4 space-y-2">
-            {MATRIX_SCHEMA_FIELDS.map((field) => (
-              <div key={field} className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3 text-sm text-zinc-700">
-                {field}
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 rounded-2xl border border-[#dbe3ef] bg-white p-3">
-            <div className="text-xs font-black text-zinc-500">High-value part families to monitor</div>
-            <div className="mt-2 text-sm text-zinc-700">{MATRIX_HIGH_VALUE_PARTS.join(' • ')}</div>
-          </div>
-          <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            Catalytic converters and some modules can show abnormal pricing due to theft/fraud risk and provenance gaps.
-            Treat them as higher-risk categories in confidence scoring.
-          </div>
-        </div>
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+        Converter and module pricing can carry extra legal/programming risk. Verify part number, emissions compliance, and
+        programming requirements before purchase.
       </div>
     </div>
   );
