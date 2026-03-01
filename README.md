@@ -13,6 +13,7 @@ AutoIndex full-stack app with React + TypeScript frontend and Node/Express auth 
 - Multi-vendor marketplace with filtering and sorting
 - Individual and vendor listing flows
 - Role-based auth: `individual`, `vendor`, `admin`
+- Email-first signup with verification-link activation (individual + vendor)
 - Vendor dashboard (daily/weekly/monthly sales + customer feedback)
 - Website admin dashboard (daily/weekly/monthly totals by source)
 - Marketplace analysis panel (MVP simulated intelligence)
@@ -25,6 +26,7 @@ Backend auth uses:
 - Password hashing with `bcryptjs`
 - Signed session tokens with `jsonwebtoken`
 - HttpOnly session cookies (`ai_session`)
+- Email verification links (SMTP + token expiry)
 
 Default admin credentials are seeded in local development only:
 
@@ -34,8 +36,17 @@ Default admin credentials are seeded in local development only:
 In production, set all of these environment variables:
 
 - `SESSION_SECRET`
+- `APP_BASE_URL` (frontend URL used for verification links)
 - `ADMIN_USERNAME`
 - `ADMIN_PASSWORD`
+- `EMAIL_FROM`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_SECURE`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `PASSWORD_MIN_LENGTH` (default `10`)
+- `EMAIL_VERIFY_TOKEN_TTL_HOURS` (default `24`)
 
 For Facebook Marketplace intelligence search, also set:
 
@@ -62,7 +73,7 @@ npm run server
 Example:
 
 ```bash
-SESSION_SECRET=replace-me META_CL_ACCESS_TOKEN=replace-me npm run server
+SESSION_SECRET=replace-me APP_BASE_URL=http://localhost:5173 SMTP_HOST=smtp.mailgun.org SMTP_USER=postmaster@example.com SMTP_PASS=replace-me META_CL_ACCESS_TOKEN=replace-me npm run server
 ```
 
 For local frontend to call local backend:
@@ -96,6 +107,13 @@ GitHub Pages is static-only and cannot run the Node auth server. For secure back
 
 1. Deploy backend using `render.yaml`.
 2. In Render, set:
+   - `APP_BASE_URL=https://kdubz-cyber.github.io/autoindex/`
+   - `EMAIL_FROM=<verified-sender@yourdomain.com>`
+   - `SMTP_HOST=<smtp-host>`
+   - `SMTP_PORT=<smtp-port>`
+   - `SMTP_SECURE=<true-or-false>`
+   - `SMTP_USER=<smtp-user>`
+   - `SMTP_PASS=<smtp-password>`
    - `META_CL_ACCESS_TOKEN`
    - `ALLOWED_ORIGINS=https://kdubz-cyber.github.io`
    - `ADMIN_USERNAME=<your-admin-username>`
@@ -105,8 +123,9 @@ GitHub Pages is static-only and cannot run the Node auth server. For secure back
    - `VITE_API_BASE_URL=https://<your-render-service>.onrender.com`
 4. Re-run `Deploy to GitHub Pages` workflow.
 5. Verify:
-   - `https://<backend>/api/system/status` returns `metaMarketplaceConfigured: true`
-   - AutoIndex Marketplace search no longer shows backend/token warnings.
+   - `https://<backend>/api/system/status` returns `emailServiceConfigured: true`
+   - Signup returns `requiresEmailVerification: true`
+   - Account login is blocked until the verification link is clicked.
 
 ## Tech stack
 
@@ -117,3 +136,4 @@ GitHub Pages is static-only and cannot run the Node auth server. For secure back
 - Express
 - bcryptjs
 - jsonwebtoken
+- nodemailer

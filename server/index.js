@@ -3,7 +3,8 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { randomUUID } from 'node:crypto';
+import nodemailer from 'nodemailer';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,7 +17,17 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'change-this-in-production'
 const PROD = process.env.NODE_ENV === 'production';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || (PROD ? '' : 'sino0491');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (PROD ? '' : 'Ktrill20!');
+const PASSWORD_MIN_LENGTH = Number(process.env.PASSWORD_MIN_LENGTH || 10);
 const TOKEN_TTL = '7d';
+const EMAIL_VERIFY_TOKEN_TTL_HOURS = Number(process.env.EMAIL_VERIFY_TOKEN_TTL_HOURS || 24);
+const VERIFY_RESEND_COOLDOWN_MS = 60_000;
+const APP_BASE_URL = process.env.APP_BASE_URL || (PROD ? 'https://kdubz-cyber.github.io/autoindex/' : 'http://localhost:5173');
+const EMAIL_FROM = process.env.EMAIL_FROM || 'no-reply@autoindex.app';
+const SMTP_HOST = process.env.SMTP_HOST || '';
+const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
+const SMTP_SECURE = String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
+const SMTP_USER = process.env.SMTP_USER || '';
+const SMTP_PASS = process.env.SMTP_PASS || '';
 const USERS_PATH = path.join(__dirname, 'data', 'users.json');
 const HTTP_TIMEOUT_MS = 7000;
 const META_CL_BASE_URL = process.env.META_CL_BASE_URL || 'https://graph.facebook.com/v22.0';
@@ -27,6 +38,15 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .filter(Boolean);
 
 const app = express();
+const mailTransport = SMTP_HOST
+  ? nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      secure: SMTP_SECURE,
+      auth: SMTP_USER && SMTP_PASS ? { user: SMTP_USER, pass: SMTP_PASS } : undefined
+    })
+  : null;
+
 const corsOptions = {
   origin(origin, callback) {
     if (!origin) return callback(null, true);
@@ -69,6 +89,91 @@ function smallHash(str) {
     h = Math.imul(h, 16777619);
   }
   return Math.abs(h >>> 0);
+}
+
+function normalizeEmail(raw) {
+  if (typeof raw !== 'string') return '';
+  return raw.trim().toLowerCase();
+}
+
+function isValidEmail(raw) {
+  const email = normalizeEmail(raw);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isStrongPassword(password) {
+  if (typeof password !== 'string' || password.length < PASSWORD_MIN_LENGTH) return false;
+  return /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
+}
+
+function hashVerificationToken(token) {
+  return createHash('sha256').update(String(token)).digest('hex');
+}
+
+function timingSafeEqualHex(left, right) {
+  if (typeof left !== 'string' || typeof right !== 'string') return false;
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(Buffer.from(left), Buffer.from(right));
+}
+
+function createVerificationToken() {
+  const token = randomBytes(32).toString('hex');
+  return {
+    token,
+    tokenHash: hashVerificationToken(token),
+    expiresAt: Date.now() + EMAIL_VERIFY_TOKEN_TTL_HOURS * 60 * 60 * 1000
+  };
+}
+
+function buildVerificationUrl(email, token) {
+  try {
+    const u = new URL(APP_BASE_URL);
+    u.searchParams.set('verify_email', email);
+    u.searchParams.set('verify_token', token);
+    return u.toString();
+  } catch {
+    const base = APP_BASE_URL.endsWith('/') ? APP_BASE_URL : `${APP_BASE_URL}/`;
+    return `${base}?verify_email=${encodeURIComponent(email)}&verify_token=${encodeURIComponent(token)}`;
+  }
+}
+
+async function sendVerificationEmail({ email, username, token }) {
+  const verifyUrl = buildVerificationUrl(email, token);
+  const text = [
+    `Hi ${username},`,
+    '',
+    'Verify your AutoIndex account by clicking the link below:',
+    verifyUrl,
+    '',
+    `This link expires in ${EMAIL_VERIFY_TOKEN_TTL_HOURS} hours.`
+  ].join('\n');
+  const html = [
+    `<p>Hi ${username},</p>`,
+    '<p>Verify your AutoIndex account by clicking the link below:</p>',
+    `<p><a href="${verifyUrl}">Verify your account</a></p>`,
+    `<p>This link expires in ${EMAIL_VERIFY_TOKEN_TTL_HOURS} hours.</p>`
+  ].join('');
+
+  if (!mailTransport) {
+    console.log(`[AutoIndex] Email transport not configured. Verification link for ${email}: ${verifyUrl}`);
+    return {
+      sent: false,
+      previewUrl: verifyUrl
+    };
+  }
+
+  await mailTransport.sendMail({
+    from: EMAIL_FROM,
+    to: email,
+    subject: 'Verify your AutoIndex account',
+    text,
+    html
+  });
+
+  return {
+    sent: true,
+    previewUrl: null
+  };
 }
 
 async function fetchWithTimeout(url, init = {}, timeoutMs = HTTP_TIMEOUT_MS) {
@@ -644,8 +749,14 @@ async function seedAdmin() {
   store.users.push({
     id: randomUUID(),
     username: ADMIN_USERNAME,
+    email: null,
     passwordHash,
     role: 'admin',
+    emailVerified: true,
+    emailVerifiedAt: Date.now(),
+    emailVerificationTokenHash: null,
+    emailVerificationExpiresAt: null,
+    emailVerificationSentAt: null,
     vendorId: null,
     vendorName: null,
     vendorLocation: null,
@@ -682,11 +793,23 @@ function sanitizeUser(user) {
   return {
     id: user.id,
     username: user.username,
+    email: user.email || undefined,
+    emailVerified: Boolean(user.emailVerified),
     role: user.role,
     vendorId: user.vendorId || undefined,
     vendorName: user.vendorName || undefined,
     vendorLocation: user.vendorLocation || undefined
   };
+}
+
+function findUserByIdentifier(users, identifier) {
+  const needle = String(identifier || '').trim().toLowerCase();
+  if (!needle) return null;
+  return (
+    users.find((u) => typeof u.email === 'string' && u.email.toLowerCase() === needle) ||
+    users.find((u) => u.username.toLowerCase() === needle) ||
+    null
+  );
 }
 
 function authRequired(req, res, next) {
@@ -712,6 +835,8 @@ app.get('/api/system/status', (_, res) => {
   res.json({
     ok: true,
     mode: PROD ? 'production' : 'development',
+    authRequiresEmailVerification: true,
+    emailServiceConfigured: Boolean(mailTransport),
     metaMarketplaceConfigured: Boolean(META_CL_ACCESS_TOKEN),
     allowedOrigins: ALLOWED_ORIGINS,
     apiVersion: '2026-02-27'
@@ -730,14 +855,25 @@ app.get('/api/auth/me', authRequired, (req, res) => {
 });
 
 app.post('/api/auth/signup', async (req, res) => {
-  const { username, password, role, vendorName, vendorLocation } = req.body ?? {};
+  const { email, username, password, role, vendorName, vendorLocation } = req.body ?? {};
   const normalizedRole = role === 'vendor' ? 'vendor' : role === 'individual' ? 'individual' : null;
-  if (!username || typeof username !== 'string') {
-    res.status(400).json({ error: 'Username is required' });
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedUsername = String(username || '').trim();
+  const fallbackUsername = normalizedEmail ? normalizedEmail.split('@')[0] : '';
+  const accountUsername = normalizedUsername || fallbackUsername;
+
+  if (!isValidEmail(normalizedEmail)) {
+    res.status(400).json({ error: 'A valid email address is required' });
     return;
   }
-  if (!password || typeof password !== 'string' || password.length < 8) {
-    res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (!accountUsername || accountUsername.length < 3) {
+    res.status(400).json({ error: 'Username must be at least 3 characters' });
+    return;
+  }
+  if (!isStrongPassword(password)) {
+    res.status(400).json({
+      error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters and include uppercase, lowercase, number, and symbol`
+    });
     return;
   }
   if (!normalizedRole) {
@@ -746,20 +882,32 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 
   const store = readStore();
-  const exists = store.users.some((u) => u.username.toLowerCase() === username.trim().toLowerCase());
-  if (exists) {
+  const emailExists = store.users.some((u) => typeof u.email === 'string' && u.email.toLowerCase() === normalizedEmail);
+  if (emailExists) {
+    res.status(409).json({ error: 'Email already exists' });
+    return;
+  }
+  const usernameExists = store.users.some((u) => u.username.toLowerCase() === accountUsername.toLowerCase());
+  if (usernameExists) {
     res.status(409).json({ error: 'Username already exists' });
     return;
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
+  const verification = createVerificationToken();
   const user = {
     id: randomUUID(),
-    username: username.trim(),
+    email: normalizedEmail,
+    username: accountUsername,
     passwordHash,
     role: normalizedRole,
+    emailVerified: false,
+    emailVerifiedAt: null,
+    emailVerificationTokenHash: verification.tokenHash,
+    emailVerificationExpiresAt: verification.expiresAt,
+    emailVerificationSentAt: Date.now(),
     vendorId: normalizedRole === 'vendor' ? `vx-${Date.now()}` : null,
-    vendorName: normalizedRole === 'vendor' ? String(vendorName || `${username.trim()} Performance`) : null,
+    vendorName: normalizedRole === 'vendor' ? String(vendorName || `${accountUsername} Performance`) : null,
     vendorLocation: normalizedRole === 'vendor' ? String(vendorLocation || 'Unknown, USA') : null,
     createdAt: Date.now()
   };
@@ -767,21 +915,38 @@ app.post('/api/auth/signup', async (req, res) => {
   store.users.push(user);
   writeStore(store);
 
-  const token = makeSessionToken(user);
-  const cookie = sessionCookie(token);
-  res.cookie('ai_session', cookie.value, cookie);
-  res.status(201).json({ user: sanitizeUser(user) });
+  let emailDelivery = { sent: false, previewUrl: null };
+  try {
+    emailDelivery = await sendVerificationEmail({
+      email: normalizedEmail,
+      username: accountUsername,
+      token: verification.token
+    });
+  } catch (error) {
+    console.error('Failed to send verification email:', error);
+  }
+
+  res.status(201).json({
+    ok: true,
+    requiresEmailVerification: true,
+    verificationEmailSent: emailDelivery.sent,
+    email: normalizedEmail,
+    message: emailDelivery.sent
+      ? 'Account created. Check your email to verify your account.'
+      : 'Account created. Email service is not configured; verification link is available in server logs.',
+    previewUrl: !PROD ? emailDelivery.previewUrl : undefined
+  });
 });
 
 app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body ?? {};
-  if (!username || !password) {
-    res.status(400).json({ error: 'Username and password are required' });
+  const { identifier, password } = req.body ?? {};
+  if (!identifier || !password) {
+    res.status(400).json({ error: 'Email/username and password are required' });
     return;
   }
 
   const store = readStore();
-  const user = store.users.find((u) => u.username.toLowerCase() === String(username).trim().toLowerCase());
+  const user = findUserByIdentifier(store.users, identifier);
   if (!user) {
     res.status(401).json({ error: 'Invalid credentials' });
     return;
@@ -793,10 +958,120 @@ app.post('/api/auth/login', async (req, res) => {
     return;
   }
 
+  if (user.role !== 'admin') {
+    if (!user.email) {
+      res.status(403).json({
+        error: 'Legacy account without email detected. Create a new account with a verified email.',
+        code: 'EMAIL_REQUIRED'
+      });
+      return;
+    }
+    if (!user.emailVerified) {
+      res.status(403).json({
+        error: 'Email not verified. Check your inbox for a verification link.',
+        code: 'EMAIL_NOT_VERIFIED',
+        email: user.email
+      });
+      return;
+    }
+  }
+
   const token = makeSessionToken(user);
   const cookie = sessionCookie(token);
   res.cookie('ai_session', cookie.value, cookie);
   res.json({ user: sanitizeUser(user) });
+});
+
+app.get('/api/auth/verify-email', (req, res) => {
+  const token = String(req.query.token || '').trim();
+  const email = normalizeEmail(req.query.email);
+  if (!token || !isValidEmail(email)) {
+    res.status(400).json({ error: 'Invalid verification link.' });
+    return;
+  }
+
+  const store = readStore();
+  const user = store.users.find((u) => typeof u.email === 'string' && u.email.toLowerCase() === email);
+  if (!user) {
+    res.status(400).json({ error: 'Invalid verification link.' });
+    return;
+  }
+  if (user.emailVerified) {
+    res.json({ ok: true, message: 'Email already verified. You can log in.' });
+    return;
+  }
+
+  const tokenHash = hashVerificationToken(token);
+  const expiresAt = Number(user.emailVerificationExpiresAt || 0);
+  const storedHash = String(user.emailVerificationTokenHash || '');
+  if (!storedHash || !expiresAt || Date.now() > expiresAt || !timingSafeEqualHex(storedHash, tokenHash)) {
+    res.status(400).json({ error: 'Verification link is invalid or expired.' });
+    return;
+  }
+
+  user.emailVerified = true;
+  user.emailVerifiedAt = Date.now();
+  user.emailVerificationTokenHash = null;
+  user.emailVerificationExpiresAt = null;
+  user.emailVerificationSentAt = null;
+  writeStore(store);
+
+  res.json({ ok: true, message: 'Email verified. You can now log in.' });
+});
+
+app.post('/api/auth/resend-verification', async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  if (!isValidEmail(email)) {
+    res.status(400).json({ error: 'A valid email address is required.' });
+    return;
+  }
+
+  const store = readStore();
+  const user = store.users.find((u) => typeof u.email === 'string' && u.email.toLowerCase() === email);
+  if (!user) {
+    res.json({ ok: true, message: 'If an account exists, a verification email has been sent.' });
+    return;
+  }
+  if (user.role === 'admin') {
+    res.status(400).json({ error: 'Admin account does not use email verification.' });
+    return;
+  }
+  if (user.emailVerified) {
+    res.json({ ok: true, message: 'Email already verified. You can log in.' });
+    return;
+  }
+
+  const lastSent = Number(user.emailVerificationSentAt || 0);
+  if (lastSent && Date.now() - lastSent < VERIFY_RESEND_COOLDOWN_MS) {
+    res.status(429).json({ error: 'Please wait one minute before requesting another verification email.' });
+    return;
+  }
+
+  const verification = createVerificationToken();
+  user.emailVerificationTokenHash = verification.tokenHash;
+  user.emailVerificationExpiresAt = verification.expiresAt;
+  user.emailVerificationSentAt = Date.now();
+  writeStore(store);
+
+  let emailDelivery = { sent: false, previewUrl: null };
+  try {
+    emailDelivery = await sendVerificationEmail({
+      email,
+      username: user.username,
+      token: verification.token
+    });
+  } catch (error) {
+    console.error('Failed to resend verification email:', error);
+  }
+
+  res.json({
+    ok: true,
+    verificationEmailSent: emailDelivery.sent,
+    message: emailDelivery.sent
+      ? 'Verification email sent. Check your inbox.'
+      : 'Email service is not configured; verification link is available in server logs.',
+    previewUrl: !PROD ? emailDelivery.previewUrl : undefined
+  });
 });
 
 app.post('/api/auth/logout', (_, res) => {

@@ -13,8 +13,26 @@ services:
         value: production
       - key: SESSION_SECRET
         generateValue: true
+      - key: APP_BASE_URL
+        value: https://kdubz-cyber.github.io/autoindex/
       - key: ALLOWED_ORIGINS
         value: https://kdubz-cyber.github.io
+      - key: PASSWORD_MIN_LENGTH
+        value: "10"
+      - key: EMAIL_VERIFY_TOKEN_TTL_HOURS
+        value: "24"
+      - key: EMAIL_FROM
+        value: no-reply@autoindex.app
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
       - key: META_CL_BASE_URL
         value: https://graph.facebook.com/v22.0
       - key: META_CL_ACCESS_TOKEN

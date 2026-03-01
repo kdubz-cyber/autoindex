@@ -70,11 +70,14 @@ Embed mode behavior:
 
 ## 7) Backend Notes
 
-If backend is not configured, app still works in template mode with deterministic analysis and local account/session storage.
+If backend is not configured, guest browsing and marketplace analysis still work, but secure login/signup is disabled.
 
 For connected backend mode, set:
 
 - `VITE_API_BASE_URL` (frontend)
 - `SESSION_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` (backend)
+- `APP_BASE_URL` (frontend URL used in verification email links)
+- `EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` (email verification delivery)
+- `PASSWORD_MIN_LENGTH` and `EMAIL_VERIFY_TOKEN_TTL_HOURS` (optional auth policy tuning)
 - `ALLOWED_ORIGINS` to include your frontend domain
 - `META_CL_ACCESS_TOKEN` for Facebook Marketplace API integration

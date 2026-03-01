@@ -112,14 +112,12 @@ type UserRole = 'individual' | 'vendor' | 'admin';
 type SessionUser = {
   id: string;
   username: string;
+  email?: string;
+  emailVerified?: boolean;
   role: UserRole;
   vendorId?: string;
   vendorName?: string;
   vendorLocation?: string;
-};
-
-type LocalAuthUser = SessionUser & {
-  password: string;
 };
 
 type OrderRecord = {
@@ -146,15 +144,8 @@ type VendorFeedback = {
   ts: number;
 };
 
-const MIN_PASSWORD_LENGTH = 8;
-const LOCAL_AUTH_USERS_KEY = 'autoindex_local_auth_users';
-const LOCAL_AUTH_SESSION_KEY = 'autoindex_local_auth_session';
-const LOCAL_DEMO_ADMIN: LocalAuthUser = {
-  id: 'local-admin',
-  username: 'sino0491',
-  password: 'Ktrill20!',
-  role: 'admin'
-};
+const MIN_PASSWORD_LENGTH = 10;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const AUTO_INDEX_LOGO =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 90"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%231877f2"/><stop offset="1" stop-color="%23166fe5"/></linearGradient></defs><rect x="0" y="0" width="420" height="90" rx="18" fill="url(%23g)"/><text x="210" y="58" text-anchor="middle" font-family="Arial,sans-serif" font-size="34" font-weight="800" fill="white">AutoIndex</text></svg>';
@@ -417,6 +408,16 @@ function parsePriceInput(raw: string | number | null | undefined) {
   return value;
 }
 
+function isStrongPassword(password: string) {
+  return (
+    password.length >= MIN_PASSWORD_LENGTH &&
+    /[a-z]/.test(password) &&
+    /[A-Z]/.test(password) &&
+    /\d/.test(password) &&
+    /[^A-Za-z0-9]/.test(password)
+  );
+}
+
 function ageBandFromPartYear(partYear: number | null): AgeBandKey | null {
   if (partYear == null) return null;
   const currentYear = new Date().getFullYear();
@@ -650,48 +651,6 @@ function useLocalStorageState<T>(key: string, fallback: T) {
   }, [key, state]);
 
   return [state, setState] as const;
-}
-
-function ensureLocalAuthUsers(): LocalAuthUser[] {
-  try {
-    const raw = localStorage.getItem(LOCAL_AUTH_USERS_KEY);
-    const parsed = raw ? (JSON.parse(raw) as LocalAuthUser[]) : [];
-    const users = Array.isArray(parsed) ? parsed : [];
-    if (!users.some((u) => u.username.toLowerCase() === LOCAL_DEMO_ADMIN.username.toLowerCase())) {
-      const next = [LOCAL_DEMO_ADMIN, ...users];
-      localStorage.setItem(LOCAL_AUTH_USERS_KEY, JSON.stringify(next));
-      return next;
-    }
-    return users;
-  } catch {
-    const seeded = [LOCAL_DEMO_ADMIN];
-    localStorage.setItem(LOCAL_AUTH_USERS_KEY, JSON.stringify(seeded));
-    return seeded;
-  }
-}
-
-function writeLocalAuthUsers(users: LocalAuthUser[]) {
-  localStorage.setItem(LOCAL_AUTH_USERS_KEY, JSON.stringify(users));
-}
-
-function readLocalSession(): SessionUser | null {
-  try {
-    const raw = localStorage.getItem(LOCAL_AUTH_SESSION_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as SessionUser;
-    if (!parsed?.id || !parsed?.username || !parsed?.role) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function writeLocalSession(user: SessionUser | null) {
-  if (!user) {
-    localStorage.removeItem(LOCAL_AUTH_SESSION_KEY);
-    return;
-  }
-  localStorage.setItem(LOCAL_AUTH_SESSION_KEY, JSON.stringify(user));
 }
 
 function SectionImage({ kind }: { kind: 'hero' | 'learn' | 'vendors' | Category }) {
@@ -1443,11 +1402,14 @@ export default function App() {
   const toast = (msg: string) => setToastMsg(msg);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authEmail, setAuthEmail] = useState('');
   const [authUsername, setAuthUsername] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authRole, setAuthRole] = useState<Exclude<UserRole, 'admin'>>('individual');
   const [authVendorName, setAuthVendorName] = useState('');
   const [authVendorLocation, setAuthVendorLocation] = useState('');
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+  const [verificationPreviewUrl, setVerificationPreviewUrl] = useState<string | null>(null);
 
   const [sellTitle, setSellTitle] = useState('');
   const [sellCategory, setSellCategory] = useState<Category>('Engine');
@@ -1495,10 +1457,7 @@ export default function App() {
   useEffect(() => {
     const hydrateSession = async () => {
       if (!HAS_API_BASE) {
-        ensureLocalAuthUsers();
-        const localSession = readLocalSession();
-        setSession(localSession);
-        if (localSession) upsertVendorDirectory(localSession);
+        setSession(null);
         return;
       }
       try {
@@ -1516,6 +1475,42 @@ export default function App() {
     };
     hydrateSession();
   }, [setExtraVendors]);
+
+  useEffect(() => {
+    if (!HAS_API_BASE) return;
+    const params = new URLSearchParams(window.location.search);
+    const verifyToken = params.get('verify_token');
+    const verifyEmail = params.get('verify_email');
+    if (!verifyToken || !verifyEmail) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('verify_token');
+    url.searchParams.delete('verify_email');
+    window.history.replaceState({}, '', url.toString());
+
+    const runVerify = async () => {
+      try {
+        const verifyUrl = `${API_BASE_URL}/api/auth/verify-email?token=${encodeURIComponent(verifyToken)}&email=${encodeURIComponent(
+          verifyEmail
+        )}`;
+        const res = await fetch(verifyUrl, { credentials: 'include' });
+        const data = (await res.json()) as { ok?: boolean; message?: string; error?: string };
+        if (!res.ok) {
+          toast(data.error ?? 'Verification link is invalid or expired');
+          return;
+        }
+        setPendingVerificationEmail('');
+        setVerificationPreviewUrl(null);
+        setAuthMode('login');
+        setAuthOpen(true);
+        setAuthEmail(verifyEmail);
+        toast(data.message ?? 'Email verified. You can now log in.');
+      } catch {
+        toast('Unable to verify email right now');
+      }
+    };
+    void runVerify();
+  }, []);
 
   useEffect(() => {
     if (session?.role === 'vendor' && !session.vendorId) {
@@ -1583,33 +1578,13 @@ export default function App() {
   }, [ageBand, availabilityLevel, baseAnchor, conditionGrade, demandLevel, partType]);
 
   const login = async () => {
-    const username = authUsername.trim();
-    if (!username || !authPassword) {
-      toast('Enter username and password');
+    const identifier = authEmail.trim();
+    if (!identifier || !authPassword) {
+      toast('Enter email (or admin username) and password');
       return;
     }
     if (!HAS_API_BASE) {
-      const users = ensureLocalAuthUsers();
-      const found = users.find((u) => u.username.toLowerCase() === username.toLowerCase());
-      if (!found || found.password !== authPassword) {
-        toast('Invalid login credentials');
-        return;
-      }
-      const localUser: SessionUser = {
-        id: found.id,
-        username: found.username,
-        role: found.role,
-        vendorId: found.vendorId,
-        vendorName: found.vendorName,
-        vendorLocation: found.vendorLocation
-      };
-      writeLocalSession(localUser);
-      setSession(localUser);
-      upsertVendorDirectory(localUser);
-      setAuthOpen(false);
-      setAuthPassword('');
-      setReviewComment('');
-      toast(`Logged in as ${localUser.role}`);
+      toast('Secure login is unavailable until backend API is configured.');
       return;
     }
     try {
@@ -1617,10 +1592,23 @@ export default function App() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password: authPassword })
+        body: JSON.stringify({ identifier, password: authPassword })
       });
-      const data = (await res.json()) as { user?: SessionUser; error?: string };
+      const data = (await res.json()) as {
+        user?: SessionUser;
+        error?: string;
+        code?: string;
+        email?: string;
+      };
       if (!res.ok || !data.user) {
+        if (data.code === 'EMAIL_NOT_VERIFIED') {
+          if (data.email) {
+            setPendingVerificationEmail(data.email);
+            setAuthEmail(data.email);
+          }
+          toast('Email not verified. Check your inbox or resend verification below.');
+          return;
+        }
         toast(data.error ?? 'Invalid login credentials');
         return;
       }
@@ -1628,6 +1616,8 @@ export default function App() {
       upsertVendorDirectory(data.user);
       setAuthOpen(false);
       setAuthPassword('');
+      setPendingVerificationEmail('');
+      setVerificationPreviewUrl(null);
       setReviewComment('');
       toast(`Logged in as ${data.user.role}`);
     } catch {
@@ -1636,42 +1626,22 @@ export default function App() {
   };
 
   const signup = async () => {
-    const username = authUsername.trim();
-    if (!username || authPassword.length < MIN_PASSWORD_LENGTH) {
-      toast(`Use a username and password of at least ${MIN_PASSWORD_LENGTH} characters`);
+    const email = authEmail.trim().toLowerCase();
+    const username = authUsername.trim() || email.split('@')[0] || '';
+    if (!EMAIL_REGEX.test(email)) {
+      toast('Enter a valid email address');
+      return;
+    }
+    if (!isStrongPassword(authPassword)) {
+      toast(`Use a secure password (${MIN_PASSWORD_LENGTH}+ chars with upper/lower/number/symbol)`);
+      return;
+    }
+    if (!username || username.length < 3) {
+      toast('Username must be at least 3 characters');
       return;
     }
     if (!HAS_API_BASE) {
-      const users = ensureLocalAuthUsers();
-      const exists = users.some((u) => u.username.toLowerCase() === username.toLowerCase());
-      if (exists) {
-        toast('Username already exists');
-        return;
-      }
-      const localUser: LocalAuthUser = {
-        id: `local-${Date.now()}`,
-        username,
-        password: authPassword,
-        role: authRole,
-        vendorId: authRole === 'vendor' ? `vx-local-${Date.now()}` : undefined,
-        vendorName: authRole === 'vendor' ? authVendorName.trim() || `${username} Performance` : undefined,
-        vendorLocation: authRole === 'vendor' ? authVendorLocation.trim() || 'Unknown, USA' : undefined
-      };
-      writeLocalAuthUsers([localUser, ...users]);
-      const sessionUser: SessionUser = {
-        id: localUser.id,
-        username: localUser.username,
-        role: localUser.role,
-        vendorId: localUser.vendorId,
-        vendorName: localUser.vendorName,
-        vendorLocation: localUser.vendorLocation
-      };
-      writeLocalSession(sessionUser);
-      setSession(sessionUser);
-      upsertVendorDirectory(sessionUser);
-      setAuthOpen(false);
-      setAuthPassword('');
-      toast('Account created');
+      toast('Secure signup is unavailable until backend API is configured.');
       return;
     }
     try {
@@ -1680,6 +1650,7 @@ export default function App() {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          email,
           username,
           password: authPassword,
           role: authRole,
@@ -1687,18 +1658,57 @@ export default function App() {
           vendorLocation: authVendorLocation.trim()
         })
       });
-      const data = (await res.json()) as { user?: SessionUser; error?: string };
-      if (!res.ok || !data.user) {
+      const data = (await res.json()) as {
+        ok?: boolean;
+        message?: string;
+        error?: string;
+        email?: string;
+        verificationEmailSent?: boolean;
+        previewUrl?: string;
+      };
+      if (!res.ok) {
         toast(data.error ?? 'Signup failed');
         return;
       }
-      setSession(data.user);
-      upsertVendorDirectory(data.user);
-      setAuthOpen(false);
+      setAuthMode('login');
+      setPendingVerificationEmail(data.email ?? email);
+      setVerificationPreviewUrl(data.previewUrl ?? null);
       setAuthPassword('');
-      toast('Account created');
+      setAuthUsername(username);
+      setAuthEmail(data.email ?? email);
+      toast(data.message ?? 'Account created. Check your inbox to verify your email before login.');
     } catch {
       toast('Signup failed');
+    }
+  };
+
+  const resendVerification = async () => {
+    const email = (pendingVerificationEmail || authEmail).trim().toLowerCase();
+    if (!EMAIL_REGEX.test(email)) {
+      toast('Enter the email address used at signup');
+      return;
+    }
+    if (!HAS_API_BASE) {
+      toast('Verification resend requires backend API.');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/resend-verification`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = (await res.json()) as { ok?: boolean; message?: string; error?: string; previewUrl?: string };
+      if (!res.ok) {
+        toast(data.error ?? 'Unable to resend verification email');
+        return;
+      }
+      setPendingVerificationEmail(email);
+      setVerificationPreviewUrl(data.previewUrl ?? null);
+      toast(data.message ?? 'Verification email sent');
+    } catch {
+      toast('Unable to resend verification email');
     }
   };
 
@@ -2180,14 +2190,28 @@ export default function App() {
             </button>
           </div>
           <div>
-            <div className="text-xs font-bold text-zinc-600">Username</div>
+            <div className="text-xs font-bold text-zinc-600">Email</div>
             <input
-              value={authUsername}
-              onChange={(e) => setAuthUsername(e.target.value)}
+              type="email"
+              value={authEmail}
+              onChange={(e) => setAuthEmail(e.target.value)}
               className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
-              placeholder="username"
+              placeholder="you@example.com"
             />
           </div>
+          {authMode === 'signup' ? (
+            <div>
+              <div className="text-xs font-bold text-zinc-600">Username</div>
+              <input
+                value={authUsername}
+                onChange={(e) => setAuthUsername(e.target.value)}
+                className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
+                placeholder="your public username"
+              />
+            </div>
+          ) : (
+            <div className="text-[12px] text-zinc-500">Admin login can use username in the email field.</div>
+          )}
           <div>
             <div className="text-xs font-bold text-zinc-600">Password</div>
             <input
@@ -2197,6 +2221,11 @@ export default function App() {
               className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
               placeholder="password"
             />
+            {authMode === 'signup' ? (
+              <div className="mt-1 text-[12px] text-zinc-500">
+                Use {MIN_PASSWORD_LENGTH}+ characters with uppercase, lowercase, number, and symbol.
+              </div>
+            ) : null}
           </div>
           {authMode === 'signup' ? (
             <>
@@ -2237,14 +2266,33 @@ export default function App() {
           ) : null}
           <button
             onClick={authMode === 'login' ? login : signup}
-            className="w-full rounded-2xl bg-[#1877f2] py-2.5 text-sm font-extrabold text-white hover:bg-[#166fe5]"
+            disabled={!HAS_API_BASE}
+            className={`w-full rounded-2xl py-2.5 text-sm font-extrabold text-white ${
+              HAS_API_BASE ? 'bg-[#1877f2] hover:bg-[#166fe5]' : 'cursor-not-allowed bg-[#9ca3af]'
+            }`}
           >
             {authMode === 'login' ? 'Login' : 'Create account'}
           </button>
+          {authMode === 'login' && (pendingVerificationEmail || authEmail.trim()) ? (
+            <button
+              onClick={resendVerification}
+              className="w-full rounded-2xl border border-[#dbe3ef] bg-white py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
+            >
+              Resend verification email
+            </button>
+          ) : null}
+          {verificationPreviewUrl ? (
+            <button
+              onClick={() => window.open(verificationPreviewUrl, '_blank', 'noopener,noreferrer')}
+              className="w-full rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] py-2 text-sm font-extrabold hover:bg-[#e7f3ff]"
+            >
+              Open verification link preview
+            </button>
+          ) : null}
           <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3 text-xs text-zinc-600">
             {HAS_API_BASE
-              ? `Use your account credentials to continue. Password minimum: ${MIN_PASSWORD_LENGTH} characters.`
-              : `Template mode active: account data is stored in this browser only. Password minimum: ${MIN_PASSWORD_LENGTH} characters.`}
+              ? 'Signup requires a verified email. Check your inbox for the verification link before logging in.'
+              : 'Backend API not configured. Set VITE_API_BASE_URL to enable secure auth.'}
           </div>
         </div>
       </Drawer>
@@ -2313,7 +2361,6 @@ export default function App() {
                           // Ignore network errors; clear client session regardless.
                         }
                       }
-                      writeLocalSession(null);
                       setSession(null);
                       setActiveTab('Valuation');
                       toast('Logged out');
