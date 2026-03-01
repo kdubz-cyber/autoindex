@@ -23,7 +23,11 @@ import {
   ClipboardList,
   ExternalLink,
   User2,
-  LogOut
+  LogOut,
+  Table2,
+  Database,
+  BarChart3,
+  Layers
 } from 'lucide-react';
 
 const DEFAULT_RENDER_API_BASE = 'https://autoindex-api.onrender.com';
@@ -38,7 +42,7 @@ const inferredApiBase =
 const API_BASE_URL = inferredApiBase.replace(/\/$/, '');
 const HAS_API_BASE = Boolean(API_BASE_URL);
 
-type Tab = 'Valuation' | 'Marketplace' | 'Vendors' | 'Learn' | 'Sell' | 'Dashboard';
+type Tab = 'Valuation' | 'Part Matrix' | 'Marketplace' | 'Vendors' | 'Learn' | 'Sell' | 'Dashboard';
 
 const CATEGORIES = [
   'Engine',
@@ -330,6 +334,296 @@ const MARKET_DEMAND_FACTORS: Array<{ key: DemandKey; label: string; factor: numb
   { key: 'moderate', label: 'Moderate', factor: 1.0 },
   { key: 'high', label: 'High', factor: 1.1 },
   { key: 'cult_track_proven', label: 'Cult / Track Proven', factor: 1.2 }
+];
+
+type MatrixMarket = 'U.S.' | 'EU/UK' | 'Japan' | 'Other';
+
+type PartMatrixRow = {
+  decade: string;
+  market: MatrixMarket;
+  modelFamilies: string;
+  rationale: string;
+  partHotspots: string[];
+  primaryChannels: string[];
+  ariBand: 'Very High' | 'High' | 'Moderate';
+};
+
+const ARI_SIGNALS: Array<{ code: string; label: string; weight: number; detail: string }> = [
+  {
+    code: 'NRA',
+    label: 'New Replacement Availability',
+    weight: 20,
+    detail: 'Breadth of new/replacement supply across major catalogs.'
+  },
+  {
+    code: 'UOL',
+    label: 'Used OEM Liquidity',
+    weight: 25,
+    detail: 'Used OEM inventory depth and searchable regional supply.'
+  },
+  {
+    code: 'MPO',
+    label: 'Marketplace Pricing Observability',
+    weight: 15,
+    detail: 'Ability to measure sold and active price distributions.'
+  },
+  {
+    code: 'IB',
+    label: 'Interchangeability Breadth',
+    weight: 15,
+    detail: 'Cross-year/platform fitment compatibility breadth.'
+  },
+  {
+    code: 'RRS',
+    label: 'Reproduction/Restoration Support',
+    weight: 15,
+    detail: 'Repro parts depth for older platforms and restoration cycles.'
+  },
+  {
+    code: 'EPD',
+    label: 'Enthusiast/Performance Density',
+    weight: 10,
+    detail: 'Community demand and performance ecosystem vendor coverage.'
+  }
+];
+
+const MATRIX_SCHEMA_FIELDS = [
+  'Vehicle keys: make/model family, platform/chassis, year range, engine/drivetrain/transmission.',
+  'Part keys: taxonomy, OEM part numbers, aftermarket equivalents, bundle completeness.',
+  'Condition normalization: New/Reman/Used/Core plus A/B/C-grade mapping where applicable.',
+  'Interchange metadata: compatible model-years, trims, engines, and coding/programming constraints.',
+  'Market observations: listing counts, sold counts, quantiles (P25/P50/P75), time-to-sell.',
+  'Scarcity/risk markers: thin-market flags, seasonality, theft-risk/provenance checks.'
+] as const;
+
+const MATRIX_HIGH_VALUE_PARTS = [
+  'Powertrain assemblies (engine, transmission, transfer case, differentials)',
+  'Electronics/modules (ECU, BCM, ADAS sensors, clusters)',
+  'Collision-heavy exterior (headlamps, bumpers, doors, tailgates)',
+  'Emissions/high-volatility categories (especially catalytic converters)'
+] as const;
+
+const PART_MATRIX_ROWS: PartMatrixRow[] = [
+  {
+    decade: '1970s',
+    market: 'U.S.',
+    modelFamilies:
+      "Mustang, Camaro, Corvette C3, Firebird/Trans Am, Chevelle/Monte Carlo, C/K pickups, F-Series, Jeep CJ",
+    rationale: 'Strong restoration and enthusiast ecosystems with large reproduction support.',
+    partHotspots: ['Sheet metal', 'Interior trim', 'Crate/performance engines'],
+    primaryChannels: ['Restoration vendors', 'Performance catalogs', 'Recycler networks'],
+    ariBand: 'Very High'
+  },
+  {
+    decade: '1970s',
+    market: 'EU/UK',
+    modelFamilies: 'Porsche 911 (classic), VW Golf Mk1, BMW E21, Mercedes W123, Volvo 240',
+    rationale: 'Long lifecycle platforms with strong specialist supply in Europe.',
+    partHotspots: ['Body/interior restoration', 'Engine ancillaries', 'Trim'],
+    primaryChannels: ['EU specialist retailers', 'Marketplace comps', 'Recycler inventories'],
+    ariBand: 'High'
+  },
+  {
+    decade: '1970s',
+    market: 'Japan',
+    modelFamilies: 'Datsun/Nissan Z (S30), Toyota Celica, Land Cruiser 40/55/60, Mazda rotary lineage',
+    rationale: 'Enduring enthusiast demand and import/JDM-focused supply channels.',
+    partHotspots: ['Engine/performance', 'Rare trim', 'Suspension'],
+    primaryChannels: ['JDM suppliers', 'Marketplace comps', 'Specialty import vendors'],
+    ariBand: 'High'
+  },
+  {
+    decade: '1970s',
+    market: 'Other',
+    modelFamilies: 'Land Rover Series/Defender lineage, early Nissan Patrol',
+    rationale: 'Global off-road communities keep long-tail demand active.',
+    partHotspots: ['Driveline', 'Body panels', 'Off-road accessories'],
+    primaryChannels: ['Regional specialists', 'Recycler exports', 'Off-road marketplaces'],
+    ariBand: 'Moderate'
+  },
+  {
+    decade: '1980s',
+    market: 'U.S.',
+    modelFamilies: 'Mustang Fox, Camaro/Firebird 3rd gen, Corvette C4, Square-body C/K, F-Series, Wrangler YJ',
+    rationale: 'High parts interchange and deep domestic truck/muscle support.',
+    partHotspots: ['Powertrain swaps', 'Suspension', 'Body restoration'],
+    primaryChannels: ['Performance retailers', 'Recycler networks', 'Classified marketplaces'],
+    ariBand: 'Very High'
+  },
+  {
+    decade: '1980s',
+    market: 'EU/UK',
+    modelFamilies: 'BMW E30/E28, Mercedes W124, VW Golf Mk2, Porsche 944/928',
+    rationale: 'Strong specialist vendor density and active enthusiast ownership.',
+    partHotspots: ['Engine electronics', 'Cooling/fuel systems', 'Body trim'],
+    primaryChannels: ['EU catalog specialists', 'Marketplace comps', 'Recycler supply'],
+    ariBand: 'High'
+  },
+  {
+    decade: '1980s',
+    market: 'Japan',
+    modelFamilies: 'Supra Mk3, Z31, RX-7 FC, Civic/CRX, MR2 AW11',
+    rationale: 'Tuner ecosystem depth and sustained demand in motorsport circles.',
+    partHotspots: ['Turbo systems', 'ECU/components', 'Suspension'],
+    primaryChannels: ['JDM performance vendors', 'Auction/export channels', 'Marketplaces'],
+    ariBand: 'High'
+  },
+  {
+    decade: '1980s',
+    market: 'Other',
+    modelFamilies: 'Holden Commodore era platforms, global Hilux, early G-Class',
+    rationale: 'Regional strength with selective global export demand.',
+    partHotspots: ['Driveline', 'Body/interior', 'Utility accessories'],
+    primaryChannels: ['Regional vendors', 'Recyclers', 'Classified channels'],
+    ariBand: 'Moderate'
+  },
+  {
+    decade: '1990s',
+    market: 'U.S.',
+    modelFamilies: 'F-Series, Silverado GMT400, Ram 2nd gen, Wrangler TJ, Cherokee XJ, Corvette C5, Mustang SN95',
+    rationale: 'Large fleet populations and very liquid used/new replacement markets.',
+    partHotspots: ['Engines/transmissions', 'Axles', 'Lighting/body'],
+    primaryChannels: ['Recycler networks', 'Major catalog retailers', 'Marketplace sold comps'],
+    ariBand: 'Very High'
+  },
+  {
+    decade: '1990s',
+    market: 'EU/UK',
+    modelFamilies: 'BMW E36/E34, Golf Mk3/Mk4, Audi A4 B5, Mercedes W202, Porsche 993/986',
+    rationale: 'Platform-level parts ecosystems with strong specialist support.',
+    partHotspots: ['Electronics modules', 'Cooling systems', 'Suspension'],
+    primaryChannels: ['EU parts specialists', 'Used OEM recyclers', 'Marketplace comps'],
+    ariBand: 'High'
+  },
+  {
+    decade: '1990s',
+    market: 'Japan',
+    modelFamilies:
+      'Civic EG/EK, Integra, Miata NA, 240SX S13/S14, Skyline R32/R33, Supra Mk4, Impreza GC, Evo I–VI',
+    rationale: 'One of the densest tuner aftermarkets for 1990s platforms.',
+    partHotspots: ['Turbo/drivetrain', 'Engine management', 'Body conversion parts'],
+    primaryChannels: ['JDM vendors', 'Performance catalogs', 'Marketplace sold comps'],
+    ariBand: 'Very High'
+  },
+  {
+    decade: '1990s',
+    market: 'Other',
+    modelFamilies: 'Land Cruiser 80, Patrol Y60/Y61, Defender 90/110',
+    rationale: 'Long-life off-road fleets sustain replacement and used OEM demand.',
+    partHotspots: ['Driveline', 'Body panels', 'Suspension/off-road kits'],
+    primaryChannels: ['Regional specialists', 'Recycler exports', 'Marketplace supply'],
+    ariBand: 'High'
+  },
+  {
+    decade: '2000s',
+    market: 'U.S.',
+    modelFamilies:
+      'Silverado/Sierra GMT800/GMT900, F-150, Mustang S197, Corvette C6, Challenger/Charger, Wrangler JK, Tacoma',
+    rationale: 'Extremely liquid truck and performance channels with broad catalog coverage.',
+    partHotspots: ['Powertrain assemblies', 'Collision parts', 'Performance upgrades'],
+    primaryChannels: ['Retail catalogs', 'Recycler inventories', 'Marketplace sold/active comps'],
+    ariBand: 'Very High'
+  },
+  {
+    decade: '2000s',
+    market: 'EU/UK',
+    modelFamilies: 'BMW E46/E90, Golf Mk5, Audi A4 B6/B7, Mercedes W203, Porsche 997/987, MINI R-chassis',
+    rationale: 'Deep specialist parts ecosystems and strong enthusiast support.',
+    partHotspots: ['ECU/electronics', 'Engine ancillaries', 'Body trim'],
+    primaryChannels: ['EU specialty vendors', 'Recycler channels', 'Marketplace comps'],
+    ariBand: 'High'
+  },
+  {
+    decade: '2000s',
+    market: 'Japan',
+    modelFamilies: 'WRX/STI GD, Evo VII–X, 350Z, S2000, RX-8, RSX, Forester SG',
+    rationale: 'High modification volume drives broad aftermarket coverage and turnover.',
+    partHotspots: ['Turbo engines', 'Manual transmissions', 'Suspension/brakes'],
+    primaryChannels: ['JDM/US performance vendors', 'Recycler markets', 'Marketplace sold comps'],
+    ariBand: 'Very High'
+  },
+  {
+    decade: '2000s',
+    market: 'Other',
+    modelFamilies: 'Prado, Amarok, Australian Falcon platforms',
+    rationale: 'Strong regional channels with moderate global demand.',
+    partHotspots: ['Driveline', 'Body/collision', 'Utility accessories'],
+    primaryChannels: ['Regional catalog supply', 'Recyclers', 'Marketplaces'],
+    ariBand: 'Moderate'
+  },
+  {
+    decade: '2010s',
+    market: 'U.S.',
+    modelFamilies:
+      'Mustang S550, Camaro 5th/6th, Challenger/Charger, Corvette C7, Wrangler JK/JL, F-150, Silverado/Sierra, Tacoma 3rd gen',
+    rationale: 'Modern high-volume platforms with high mod culture and strong replacement demand.',
+    partHotspots: ['Lighting/body', 'Performance bolt-ons', 'Electronics/modules'],
+    primaryChannels: ['Retail catalogs', 'Recycler networks', 'Marketplace sold data'],
+    ariBand: 'Very High'
+  },
+  {
+    decade: '2010s',
+    market: 'EU/UK',
+    modelFamilies: 'BMW F30, Golf Mk7, Audi A4 B8/B9, Mercedes W205, Porsche 991/981',
+    rationale: 'Large specialist infrastructure and stable enthusiast demand.',
+    partHotspots: ['Engine management', 'Suspension', 'Body/interior'],
+    primaryChannels: ['EU specialists', 'Recyclers', 'Marketplace comps'],
+    ariBand: 'High'
+  },
+  {
+    decade: '2010s',
+    market: 'Japan',
+    modelFamilies: 'BRZ/86, WRX VA, Civic Type R ecosystem, GT-R R35, 370Z, Miata ND',
+    rationale: 'Strong enthusiast liquidity and active performance upgrade cycles.',
+    partHotspots: ['Turbo/drivetrain', 'Aero/body kits', 'Brake/suspension'],
+    primaryChannels: ['JDM performance channels', 'Marketplaces', 'Specialty resellers'],
+    ariBand: 'Very High'
+  },
+  {
+    decade: '2010s',
+    market: 'Other',
+    modelFamilies: 'Hilux, Ranger, Land Cruiser 200',
+    rationale: 'Global utility fleets sustain parts turnover and broad accessory demand.',
+    partHotspots: ['Driveline', 'Suspension', 'Body/collision'],
+    primaryChannels: ['Regional catalogs', 'Recyclers', 'Export marketplaces'],
+    ariBand: 'High'
+  },
+  {
+    decade: '2020s',
+    market: 'U.S.',
+    modelFamilies: 'Bronco, Wrangler 4xe, Gladiator, Corvette C8, GR86, Maverick, late-model trucks',
+    rationale: 'Rapid accessory adoption and strong early-cycle aftermarket expansion.',
+    partHotspots: ['Accessory packages', 'Body/collision', 'Electronics'],
+    primaryChannels: ['Retail/performance catalogs', 'Marketplace comps', 'Recycler intake'],
+    ariBand: 'High'
+  },
+  {
+    decade: '2020s',
+    market: 'EU/UK',
+    modelFamilies: 'Porsche 992, BMW G-series performance trims, Golf Mk8',
+    rationale: 'Strong demand but growing coding complexity can narrow interchange confidence.',
+    partHotspots: ['Electronics/modules', 'Performance suspension', 'Body components'],
+    primaryChannels: ['EU specialists', 'Marketplace comps', 'Authorized/OEM channels'],
+    ariBand: 'High'
+  },
+  {
+    decade: '2020s',
+    market: 'Japan',
+    modelFamilies: 'GR86/BRZ Gen2, GR Corolla, Nissan Z RZ34, WRX VB',
+    rationale: 'High demand density and active early-life enthusiast modification.',
+    partHotspots: ['Performance powertrain', 'Brakes/suspension', 'Aero/trim'],
+    primaryChannels: ['JDM/performance vendors', 'Marketplaces', 'Specialty channels'],
+    ariBand: 'High'
+  },
+  {
+    decade: '2020s',
+    market: 'Other',
+    modelFamilies: 'Global off-road mainstream (Hilux, Prado, Patrol)',
+    rationale: 'Strong utility demand with region-dependent used OEM liquidity.',
+    partHotspots: ['Driveline', 'Suspension', 'Body/collision'],
+    primaryChannels: ['Regional suppliers', 'Recyclers', 'Marketplace channels'],
+    ariBand: 'Moderate'
+  }
 ];
 
 
@@ -1402,6 +1696,241 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
   );
 }
 
+function PartMatrixPanel({
+  query,
+  setQuery,
+  onOpenMarketplace
+}: {
+  query: string;
+  setQuery: (value: string) => void;
+  onOpenMarketplace: () => void;
+}) {
+  const [marketFilter, setMarketFilter] = useState<'All' | MatrixMarket>('All');
+  const [decadeFilter, setDecadeFilter] = useState<'All' | string>('All');
+
+  const decades = useMemo(
+    () => ['All', ...Array.from(new Set(PART_MATRIX_ROWS.map((row) => row.decade)))],
+    []
+  );
+
+  const normalizedQuery = query.trim().toLowerCase();
+
+  const filteredRows = useMemo(() => {
+    return PART_MATRIX_ROWS.filter((row) => {
+      if (marketFilter !== 'All' && row.market !== marketFilter) return false;
+      if (decadeFilter !== 'All' && row.decade !== decadeFilter) return false;
+      if (!normalizedQuery) return true;
+      const haystack = [
+        row.decade,
+        row.market,
+        row.modelFamilies,
+        row.rationale,
+        row.partHotspots.join(' '),
+        row.primaryChannels.join(' ')
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [decadeFilter, marketFilter, normalizedQuery]);
+
+  const ariClass = (band: PartMatrixRow['ariBand']) => {
+    if (band === 'Very High') return 'bg-emerald-50 text-emerald-900 border-emerald-200';
+    if (band === 'High') return 'bg-sky-50 text-sky-900 border-sky-200';
+    return 'bg-amber-50 text-amber-900 border-amber-200';
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-xs font-bold text-zinc-500">Part Matrix</div>
+            <div className="mt-1 text-2xl font-black">Car Part Fair Market Value Matrix (1970–2026)</div>
+            <div className="mt-2 max-w-4xl text-sm text-zinc-600">
+              This matrix converts fair value from a single estimate into a distribution by platform, part family, condition,
+              interchange, market liquidity, and demand pressure. Use the global search to filter model families, channels,
+              and risk hotspots.
+            </div>
+          </div>
+          <button
+            onClick={onOpenMarketplace}
+            className="inline-flex items-center gap-2 rounded-2xl bg-[#1877f2] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
+          >
+            Apply in Marketplace Tool <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
+            <div className="inline-flex items-center gap-2 text-xs font-black text-zinc-500">
+              <Table2 className="h-4 w-4" /> Matrix coverage
+            </div>
+            <div className="mt-2 text-sm text-zinc-700">{PART_MATRIX_ROWS.length} prioritized model-market rows</div>
+          </div>
+          <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
+            <div className="inline-flex items-center gap-2 text-xs font-black text-zinc-500">
+              <BarChart3 className="h-4 w-4" /> ARI method
+            </div>
+            <div className="mt-2 text-sm text-zinc-700">
+              Weighted score from New supply, Used liquidity, Pricing observability, Interchange, Reproduction, and
+              Enthusiast density.
+            </div>
+          </div>
+          <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
+            <div className="inline-flex items-center gap-2 text-xs font-black text-zinc-500">
+              <Database className="h-4 w-4" /> FMV output
+            </div>
+            <div className="mt-2 text-sm text-zinc-700">Target output is FMV band (P25/P50/P75) plus confidence score.</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-5 shadow-sm sm:p-6">
+        <div className="text-sm font-black">Integrated search + filters</div>
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="md:col-span-2">
+            <label className="text-xs font-bold text-zinc-600">Search Part Matrix (shared with top search)</label>
+            <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2">
+              <Search className="h-4 w-4 text-zinc-500" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search model family, market, parts, or channel..."
+                className="w-full bg-transparent text-sm outline-none"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-zinc-600">Decade</label>
+            <select
+              value={decadeFilter}
+              onChange={(e) => setDecadeFilter(e.target.value)}
+              className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
+            >
+              {decades.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-zinc-600">Market</label>
+            <select
+              value={marketFilter}
+              onChange={(e) => setMarketFilter(e.target.value as 'All' | MatrixMarket)}
+              className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
+            >
+              <option value="All">All</option>
+              <option value="U.S.">U.S.</option>
+              <option value="EU/UK">EU/UK</option>
+              <option value="Japan">Japan</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div className="md:col-span-2" />
+          <div className="text-right text-xs font-bold text-zinc-500">
+            Showing {filteredRows.length} of {PART_MATRIX_ROWS.length}
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-[32px] border border-[#dbe3ef] bg-white shadow-sm">
+        <div className="border-b border-[#dbe3ef] bg-[#f5f7fb] px-5 py-4">
+          <div className="text-sm font-black">Prioritized model families by decade and market</div>
+          <div className="mt-1 text-xs text-zinc-600">
+            Focused on high-liquidity platforms where FMV confidence is strongest.
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-[980px] w-full text-left">
+            <thead className="text-xs uppercase tracking-wide text-zinc-500">
+              <tr>
+                <th className="px-4 py-3">Decade</th>
+                <th className="px-4 py-3">Market</th>
+                <th className="px-4 py-3">Model families</th>
+                <th className="px-4 py-3">Primary rationale</th>
+                <th className="px-4 py-3">Part hotspots</th>
+                <th className="px-4 py-3">Channel evidence</th>
+                <th className="px-4 py-3">ARI band</th>
+              </tr>
+            </thead>
+            <tbody className="text-sm">
+              {filteredRows.map((row, idx) => (
+                <tr key={`${row.decade}-${row.market}-${idx}`} className="border-t border-[#edf2f8] align-top">
+                  <td className="px-4 py-3 font-bold text-zinc-800">{row.decade}</td>
+                  <td className="px-4 py-3 text-zinc-700">{row.market}</td>
+                  <td className="px-4 py-3 text-zinc-800">{row.modelFamilies}</td>
+                  <td className="px-4 py-3 text-zinc-700">{row.rationale}</td>
+                  <td className="px-4 py-3 text-zinc-700">{row.partHotspots.join(' • ')}</td>
+                  <td className="px-4 py-3 text-zinc-700">{row.primaryChannels.join(' • ')}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${ariClass(row.ariBand)}`}>
+                      {row.ariBand}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {filteredRows.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-8 text-sm text-zinc-600" colSpan={7}>
+                    No matrix rows match current search/filter criteria.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-5 shadow-sm sm:p-6">
+          <div className="inline-flex items-center gap-2 text-sm font-black">
+            <Layers className="h-4 w-4" /> ARI scoring model (0–100)
+          </div>
+          <div className="mt-4 space-y-3">
+            {ARI_SIGNALS.map((signal) => (
+              <div key={signal.code} className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-black text-zinc-900">
+                    {signal.code} • {signal.label}
+                  </div>
+                  <span className="rounded-full border border-[#dbe3ef] bg-white px-2 py-0.5 text-xs font-extrabold">
+                    {signal.weight}%
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-zinc-600">{signal.detail}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-5 shadow-sm sm:p-6">
+          <div className="inline-flex items-center gap-2 text-sm font-black">
+            <Database className="h-4 w-4" /> FMV matrix schema and risk controls
+          </div>
+          <div className="mt-4 space-y-2">
+            {MATRIX_SCHEMA_FIELDS.map((field) => (
+              <div key={field} className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3 text-sm text-zinc-700">
+                {field}
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-2xl border border-[#dbe3ef] bg-white p-3">
+            <div className="text-xs font-black text-zinc-500">High-value part families to monitor</div>
+            <div className="mt-2 text-sm text-zinc-700">{MATRIX_HIGH_VALUE_PARTS.join(' • ')}</div>
+          </div>
+          <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            Catalytic converters and some modules can show abnormal pricing due to theft/fraud risk and provenance gaps.
+            Treat them as higher-risk categories in confidence scoring.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('Valuation');
   const [category, setCategory] = useState<Category | 'All'>('All');
@@ -2051,7 +2580,7 @@ export default function App() {
     setVendorApplyOpen(false);
   }, [activeTab]);
 
-  const navTabs: Tab[] = ['Valuation', 'Marketplace', 'Vendors', 'Learn'];
+  const navTabs: Tab[] = ['Valuation', 'Part Matrix', 'Marketplace', 'Vendors', 'Learn'];
   if (session?.role === 'individual') navTabs.push('Sell');
   if (session?.role === 'vendor' || session?.role === 'admin') navTabs.push('Dashboard');
 
@@ -3017,6 +3546,17 @@ export default function App() {
               </div>
             </div>
           </>
+        ) : null}
+
+        {activeTab === 'Part Matrix' ? (
+          <PartMatrixPanel
+            query={query}
+            setQuery={setQuery}
+            onOpenMarketplace={() => {
+              setActiveTab('Marketplace');
+              toast('Marketplace analysis opened from Part Matrix');
+            }}
+          />
         ) : null}
 
         {activeTab === 'Marketplace' ? <MarketplaceAnalysisPanel toast={toast} /> : null}
