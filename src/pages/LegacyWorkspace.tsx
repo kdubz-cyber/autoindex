@@ -3542,43 +3542,43 @@ export default function App() {
                   <div className="text-xs font-bold text-zinc-500">Homepage Feature</div>
                   <div className="mt-1 text-2xl font-black">Facebook Marketplace Fair Market Value Tool</div>
                   <div className="mt-2 max-w-3xl text-sm text-zinc-600">
-                    Anyone can verify a Facebook Marketplace part and get AutoIndex FMV scoring. To buy or sell on
-                    AutoIndex, users must sign in with an Individual account.
+                    Anyone can verify a Facebook Marketplace part and get AutoIndex FMV scoring with no account required.
+                    Individual accounts are only needed to buy or sell on AutoIndex.
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => {
-                      if (!session) {
+                      setActiveTab('Marketplace');
+                      toast('Marketplace verifier opened');
+                    }}
+                    className="rounded-2xl bg-[#1877f2] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
+                  >
+                    Verify part value now
+                  </button>
+                  {session?.role === 'individual' ? (
+                    <button
+                      onClick={() => {
+                        setActiveTab('Sell');
+                        toast('Sell tools opened');
+                      }}
+                      className="rounded-2xl border border-[#dbe3ef] bg-white px-4 py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
+                    >
+                      Start buying and selling
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
                         setAuthMode('signup');
                         setAuthRole('individual');
                         setAuthOpen(true);
                         toast('Create an Individual account to buy or sell');
-                        return;
-                      }
-                      if (session.role !== 'individual') {
-                        toast('Use an Individual account to buy or sell on AutoIndex');
-                        return;
-                      }
-                      setActiveTab('Sell');
-                      toast('Sell tools opened');
-                    }}
-                    className="rounded-2xl bg-[#1877f2] px-4 py-2 text-sm font-extrabold text-white hover:bg-[#166fe5]"
-                  >
-                    {session?.role === 'individual' ? 'Start buying and selling' : 'Create Individual account'}
-                  </button>
-                  {!session ? (
-                    <button
-                      onClick={() => {
-                        setAuthMode('login');
-                        setAuthOpen(true);
-                        toast('Login to buy or sell');
                       }}
                       className="rounded-2xl border border-[#dbe3ef] bg-white px-4 py-2 text-sm font-extrabold hover:bg-[#f5f7fb]"
                     >
-                      Login
+                      Create Individual account
                     </button>
-                  ) : null}
+                  )}
                 </div>
               </div>
             </div>
