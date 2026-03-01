@@ -157,7 +157,7 @@ const LOCAL_DEMO_ADMIN: LocalAuthUser = {
 };
 
 const AUTO_INDEX_LOGO =
-  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 90"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%23dc2626"/><stop offset="1" stop-color="%23991b1b"/></linearGradient></defs><rect x="0" y="0" width="420" height="90" rx="18" fill="url(%23g)"/><text x="210" y="58" text-anchor="middle" font-family="Arial,sans-serif" font-size="34" font-weight="800" fill="white">AutoIndex</text></svg>';
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 90"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%231877f2"/><stop offset="1" stop-color="%23166fe5"/></linearGradient></defs><rect x="0" y="0" width="420" height="90" rx="18" fill="url(%23g)"/><text x="210" y="58" text-anchor="middle" font-family="Arial,sans-serif" font-size="34" font-weight="800" fill="white">AutoIndex</text></svg>';
 
 const VENDORS: Vendor[] = [
   {

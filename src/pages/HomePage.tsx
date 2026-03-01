@@ -11,7 +11,7 @@ export function HomePage({ onNavigate }: Props) {
     <div className="space-y-6">
       <Card className="overflow-hidden p-0">
         <div className="grid gap-0 md:grid-cols-2">
-          <div className="bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0b1220] p-6 text-white md:p-8">
+          <div className="bg-gradient-to-br from-[#1877f2] via-[#166fe5] to-[#0f4fb8] p-6 text-white md:p-8">
             <p className="text-sm font-semibold uppercase tracking-wide text-[#dbe9ff]">Marketplace Analysis</p>
             <h1 className="mt-2 text-[28px] font-bold leading-[1.15]">Know if a listing is fair before you buy</h1>
             <p className="mt-3 text-base leading-6 text-zinc-200">
