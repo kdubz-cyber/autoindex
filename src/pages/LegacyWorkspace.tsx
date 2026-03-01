@@ -3540,7 +3540,7 @@ export default function App() {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-bold text-zinc-500">Homepage Feature</div>
-                  <div className="mt-1 text-2xl font-black">Facebook Marketplace Fair Market Value Tool</div>
+                  <div className="mt-1 text-2xl font-black">Is that used part AutoIndex Verified?</div>
                   <div className="mt-2 max-w-3xl text-sm text-zinc-600">
                     Anyone can verify a Facebook Marketplace part and get AutoIndex FMV scoring with no account required.
                     Individual accounts are only needed to buy or sell on AutoIndex.
