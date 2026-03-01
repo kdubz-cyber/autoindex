@@ -21,6 +21,8 @@ services:
         value: "10"
       - key: EMAIL_VERIFY_TOKEN_TTL_HOURS
         value: "24"
+      - key: PLATFORM_FEE_RATE
+        value: "0.03"
       - key: EMAIL_FROM
         value: no-reply@autoindex.app
       - key: SMTP_HOST
@@ -32,6 +34,16 @@ services:
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS
+        sync: false
+      - key: COOKIE_SAME_SITE
+        value: none
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_DOMAIN
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
         sync: false
       - key: META_CL_BASE_URL
         value: https://graph.facebook.com/v22.0

@@ -26,7 +26,16 @@ import {
   LogOut
 } from 'lucide-react';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const DEFAULT_RENDER_API_BASE = 'https://autoindex-api.onrender.com';
+const runtimeOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+const inferredApiBase =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
+  (runtimeOrigin.includes('localhost')
+    ? 'http://localhost:3001'
+    : runtimeOrigin.includes('github.io')
+      ? DEFAULT_RENDER_API_BASE
+      : '');
+const API_BASE_URL = inferredApiBase.replace(/\/$/, '');
 const HAS_API_BASE = Boolean(API_BASE_URL);
 
 type Tab = 'Valuation' | 'Marketplace' | 'Vendors' | 'Learn' | 'Sell' | 'Dashboard';
@@ -127,10 +136,16 @@ type OrderRecord = {
   sellerId: string;
   sellerName: string;
   amount: number;
+  grossAmount?: number;
+  platformFeeAmount?: number;
+  sellerNetAmount?: number;
   buyerId: string;
   buyerRole: UserRole;
   listingId: string;
   listingTitle: string;
+  paymentProvider?: string;
+  paymentStatus?: 'pending' | 'paid' | 'failed' | string;
+  paymentSessionId?: string | null;
 };
 
 type VendorFeedback = {
@@ -651,6 +666,25 @@ function useLocalStorageState<T>(key: string, fallback: T) {
   }, [key, state]);
 
   return [state, setState] as const;
+}
+
+function orderGrossAmount(order: OrderRecord) {
+  return Number(order.grossAmount ?? order.amount ?? 0);
+}
+
+function orderPlatformFee(order: OrderRecord) {
+  if (typeof order.platformFeeAmount === 'number') return Number(order.platformFeeAmount);
+  return Math.round(orderGrossAmount(order) * 0.03 * 100) / 100;
+}
+
+function orderSellerNet(order: OrderRecord) {
+  if (typeof order.sellerNetAmount === 'number') return Number(order.sellerNetAmount);
+  return Math.max(0, orderGrossAmount(order) - orderPlatformFee(order));
+}
+
+function pct(part: number, total: number) {
+  if (!Number.isFinite(part) || !Number.isFinite(total) || total <= 0) return 0;
+  return Math.round((part / total) * 1000) / 10;
 }
 
 function SectionImage({ kind }: { kind: 'hero' | 'learn' | 'vendors' | Category }) {
@@ -1410,6 +1444,7 @@ export default function App() {
   const [authVendorLocation, setAuthVendorLocation] = useState('');
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
   const [verificationPreviewUrl, setVerificationPreviewUrl] = useState<string | null>(null);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
 
   const [sellTitle, setSellTitle] = useState('');
   const [sellCategory, setSellCategory] = useState<Category>('Engine');
@@ -1511,6 +1546,86 @@ export default function App() {
     };
     void runVerify();
   }, []);
+
+  useEffect(() => {
+    if (!HAS_API_BASE || !session) return;
+    const syncOrders = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/payments/orders`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = (await res.json()) as { orders?: OrderRecord[] };
+        if (Array.isArray(data.orders)) {
+          setOrders(data.orders);
+        }
+      } catch {
+        // Keep existing state on transient network failures.
+      }
+    };
+    void syncOrders();
+  }, [session, setOrders]);
+
+  useEffect(() => {
+    if (!HAS_API_BASE || !session) return;
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    const isSuccess = params.get('checkout_success') === '1';
+    const isCanceled = params.get('checkout_canceled') === '1';
+    if (!isSuccess && !isCanceled) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('checkout_success');
+    url.searchParams.delete('checkout_canceled');
+    url.searchParams.delete('session_id');
+    window.history.replaceState({}, '', url.toString());
+
+    if (isCanceled) {
+      toast('Checkout canceled');
+      return;
+    }
+    if (!sessionId) return;
+
+    const finalizeCheckout = async () => {
+      setCheckoutBusy(true);
+      try {
+        const confirmRes = await fetch(`${API_BASE_URL}/api/payments/confirm-checkout-session`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId })
+        });
+        const confirmData = (await confirmRes.json()) as {
+          ok?: boolean;
+          paid?: boolean;
+          orderCount?: number;
+          orders?: OrderRecord[];
+          error?: string;
+        };
+        if (!confirmRes.ok) {
+          toast(confirmData.error ?? 'Payment confirmation failed');
+          return;
+        }
+        if (!confirmData.paid) {
+          toast('Payment is still processing. Refresh in a moment.');
+          return;
+        }
+        if (Array.isArray(confirmData.orders)) {
+          setOrders((prev) => {
+            const existingIds = new Set(prev.map((o) => o.id));
+            const merged = [...confirmData.orders.filter((o) => !existingIds.has(o.id)), ...prev];
+            return merged.sort((a, b) => b.ts - a.ts);
+          });
+        }
+        setCart([]);
+        setCartOpen(false);
+        toast(`Payment complete${confirmData.orderCount ? ` (${confirmData.orderCount} item${confirmData.orderCount > 1 ? 's' : ''})` : ''}`);
+      } catch {
+        toast('Payment confirmation failed');
+      } finally {
+        setCheckoutBusy(false);
+      }
+    };
+    void finalizeCheckout();
+  }, [session, setOrders, setCart]);
 
   useEffect(() => {
     if (session?.role === 'vendor' && !session.vendorId) {
@@ -1825,13 +1940,43 @@ export default function App() {
 
   const cartTotal = useMemo(() => cartItems.reduce((sum, l) => sum + l.price, 0), [cartItems]);
   const vendorRevenue = useMemo(() => {
-    if (!session || session.role !== 'vendor' || !session.vendorId) return { daily: 0, weekly: 0, monthly: 0 };
+    if (!session || session.role !== 'vendor' || !session.vendorId) {
+      return {
+        dailyGross: 0,
+        weeklyGross: 0,
+        monthlyGross: 0,
+        dailyNet: 0,
+        weeklyNet: 0,
+        monthlyNet: 0,
+        dailyPlatformFee: 0,
+        weeklyPlatformFee: 0,
+        monthlyPlatformFee: 0
+      };
+    }
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
     const scoped = orders.filter((o) => o.sellerType === 'vendor' && o.sellerId === session.vendorId);
-    const sum = (maxAgeDays: number) =>
-      scoped.filter((o) => now - o.ts <= maxAgeDays * dayMs).reduce((total, o) => total + o.amount, 0);
-    return { daily: sum(1), weekly: sum(7), monthly: sum(30) };
+    const summarize = (maxAgeDays: number) => {
+      const bucket = scoped.filter((o) => now - o.ts <= maxAgeDays * dayMs);
+      const gross = bucket.reduce((total, o) => total + orderGrossAmount(o), 0);
+      const fee = bucket.reduce((total, o) => total + orderPlatformFee(o), 0);
+      const net = bucket.reduce((total, o) => total + orderSellerNet(o), 0);
+      return { gross, fee, net };
+    };
+    const daily = summarize(1);
+    const weekly = summarize(7);
+    const monthly = summarize(30);
+    return {
+      dailyGross: daily.gross,
+      weeklyGross: weekly.gross,
+      monthlyGross: monthly.gross,
+      dailyNet: daily.net,
+      weeklyNet: weekly.net,
+      monthlyNet: monthly.net,
+      dailyPlatformFee: daily.fee,
+      weeklyPlatformFee: weekly.fee,
+      monthlyPlatformFee: monthly.fee
+    };
   }, [orders, session]);
   const adminRevenue = useMemo(() => {
     if (!session || session.role !== 'admin') return null;
@@ -1840,10 +1985,22 @@ export default function App() {
     const within = (days: number) => orders.filter((o) => now - o.ts <= days * dayMs);
     const summarize = (days: number) => {
       const bucket = within(days);
-      const total = bucket.reduce((sum, o) => sum + o.amount, 0);
-      const vendor = bucket.filter((o) => o.sellerType === 'vendor').reduce((sum, o) => sum + o.amount, 0);
-      const individual = bucket.filter((o) => o.sellerType === 'individual').reduce((sum, o) => sum + o.amount, 0);
-      return { total, vendor, individual };
+      const gross = bucket.reduce((sum, o) => sum + orderGrossAmount(o), 0);
+      const vendorGross = bucket
+        .filter((o) => o.sellerType === 'vendor')
+        .reduce((sum, o) => sum + orderGrossAmount(o), 0);
+      const individualGross = bucket
+        .filter((o) => o.sellerType === 'individual')
+        .reduce((sum, o) => sum + orderGrossAmount(o), 0);
+      const platformFees = bucket.reduce((sum, o) => sum + orderPlatformFee(o), 0);
+      return {
+        gross,
+        vendorGross,
+        individualGross,
+        platformFees,
+        vendorPct: pct(vendorGross, gross),
+        individualPct: pct(individualGross, gross)
+      };
     };
     return { daily: summarize(1), weekly: summarize(7), monthly: summarize(30) };
   }, [orders, session]);
@@ -1901,7 +2058,7 @@ export default function App() {
                 <span>{fmtMoney(cartTotal)}</span>
               </div>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (!session) {
                     setAuthMode('login');
                     setAuthOpen(true);
@@ -1912,30 +2069,53 @@ export default function App() {
                     toast('Only Individual Users can checkout');
                     return;
                   }
-                  const created = cartItems.map<OrderRecord>((item) => ({
-                    id: `o-${Date.now()}-${item.id}-${Math.floor(Math.random() * 1e5)}`,
-                    ts: Date.now(),
-                    sellerType: item.sellerType === 'individual' ? 'individual' : 'vendor',
-                    sellerId: item.sellerType === 'individual' ? item.sellerUserId ?? 'unknown-user' : item.vendorId,
-                    sellerName:
-                      item.sellerType === 'individual'
-                        ? item.sellerName ?? 'Individual Seller'
-                        : combinedVendors.find((v) => v.id === item.vendorId)?.name ?? 'Vendor',
-                    amount: item.price,
-                    buyerId: session.id,
-                    buyerRole: session.role,
-                    listingId: item.id,
-                    listingTitle: item.title
-                  }));
-                  setOrders((prev) => [...created, ...prev]);
-                  toast('Checkout completed');
-                  setCart([]);
+                  if (!HAS_API_BASE) {
+                    toast('Secure checkout requires backend API configuration');
+                    return;
+                  }
+                  if (checkoutBusy) return;
+                  setCheckoutBusy(true);
+                  try {
+                    const payloadItems = cartItems.map((item) => ({
+                      listingId: item.id,
+                      listingTitle: item.title,
+                      price: item.price,
+                      sellerType: item.sellerType === 'individual' ? 'individual' : 'vendor',
+                      sellerId: item.sellerType === 'individual' ? item.sellerUserId ?? 'unknown-user' : item.vendorId,
+                      sellerName:
+                        item.sellerType === 'individual'
+                          ? item.sellerName ?? 'Individual Seller'
+                          : combinedVendors.find((v) => v.id === item.vendorId)?.name ?? 'Vendor'
+                    }));
+
+                    const res = await fetch(`${API_BASE_URL}/api/payments/create-checkout-session`, {
+                      method: 'POST',
+                      credentials: 'include',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ items: payloadItems })
+                    });
+                    const data = (await res.json()) as { checkoutUrl?: string; error?: string };
+                    if (!res.ok || !data.checkoutUrl) {
+                      toast(data.error ?? 'Unable to start checkout');
+                      return;
+                    }
+                    window.location.assign(data.checkoutUrl);
+                  } catch {
+                    toast('Checkout failed');
+                  } finally {
+                    setCheckoutBusy(false);
+                  }
                 }}
-                className="mt-3 w-full rounded-2xl bg-[#1877f2] py-2.5 text-sm font-extrabold text-white hover:bg-[#166fe5]"
+                disabled={checkoutBusy}
+                className={`mt-3 w-full rounded-2xl py-2.5 text-sm font-extrabold text-white ${
+                  checkoutBusy ? 'cursor-not-allowed bg-[#9ca3af]' : 'bg-[#1877f2] hover:bg-[#166fe5]'
+                }`}
               >
-                Checkout
+                {checkoutBusy ? 'Starting checkout...' : 'Checkout'}
               </button>
-              <div className="mt-2 text-[12px] text-zinc-500">No payment is processed in this MVP.</div>
+              <div className="mt-2 text-[12px] text-zinc-500">
+                Secure Stripe checkout. Google Pay appears when supported by your browser/device.
+              </div>
             </div>
           </div>
         )}
@@ -3101,9 +3281,16 @@ export default function App() {
                 <div className="text-xs font-bold text-zinc-500">Vendor dashboard</div>
                 <div className="mt-1 text-2xl font-black">Sales performance</div>
                 <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <Stat icon={TrendingUp} label="Daily sales" value={fmtMoney(vendorRevenue.daily)} />
-                  <Stat icon={TrendingUp} label="Weekly sales" value={fmtMoney(vendorRevenue.weekly)} />
-                  <Stat icon={TrendingUp} label="Monthly sales" value={fmtMoney(vendorRevenue.monthly)} />
+                  <Stat icon={TrendingUp} label="Daily gross sales" value={fmtMoney(vendorRevenue.dailyGross)} />
+                  <Stat icon={TrendingUp} label="Weekly gross sales" value={fmtMoney(vendorRevenue.weeklyGross)} />
+                  <Stat icon={TrendingUp} label="Monthly gross sales" value={fmtMoney(vendorRevenue.monthlyGross)} />
+                </div>
+                <div className="mt-4 rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
+                  <div className="text-xs font-bold text-zinc-500">Estimated payout after 3% platform fee</div>
+                  <div className="mt-1 text-xl font-black">{fmtMoney(vendorRevenue.monthlyNet)}</div>
+                  <div className="mt-1 text-xs text-zinc-700">
+                    Monthly platform fee retained by AutoIndex: {fmtMoney(vendorRevenue.monthlyPlatformFee)}
+                  </div>
                 </div>
               </div>
               <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-4 shadow-sm sm:p-6">
@@ -3137,10 +3324,17 @@ export default function App() {
                   { label: 'Monthly', data: adminRevenue.monthly }
                 ].map((period) => (
                   <div key={period.label} className="rounded-3xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
-                    <div className="text-xs font-bold text-zinc-500">{period.label} total</div>
-                    <div className="text-xl font-black">{fmtMoney(period.data.total)}</div>
-                    <div className="mt-2 text-xs text-zinc-700">Vendor sales: {fmtMoney(period.data.vendor)}</div>
-                    <div className="text-xs text-zinc-700">Individual sales: {fmtMoney(period.data.individual)}</div>
+                    <div className="text-xs font-bold text-zinc-500">{period.label} gross volume</div>
+                    <div className="text-xl font-black">{fmtMoney(period.data.gross)}</div>
+                    <div className="mt-2 text-xs text-zinc-700">
+                      AutoIndex 3% fee collected: <span className="font-black">{fmtMoney(period.data.platformFees)}</span>
+                    </div>
+                    <div className="text-xs text-zinc-700">
+                      Vendor sales: {fmtMoney(period.data.vendorGross)} ({period.data.vendorPct.toFixed(1)}%)
+                    </div>
+                    <div className="text-xs text-zinc-700">
+                      Individual sales: {fmtMoney(period.data.individualGross)} ({period.data.individualPct.toFixed(1)}%)
+                    </div>
                   </div>
                 ))}
               </div>

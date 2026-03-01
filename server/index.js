@@ -4,6 +4,7 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
+import Stripe from 'stripe';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,7 +30,21 @@ const SMTP_SECURE = String(process.env.SMTP_SECURE || 'false').toLowerCase() ===
 const SMTP_USER = process.env.SMTP_USER || '';
 const SMTP_PASS = process.env.SMTP_PASS || '';
 const USERS_PATH = path.join(__dirname, 'data', 'users.json');
+const PAYMENTS_PATH = path.join(__dirname, 'data', 'payments.json');
 const HTTP_TIMEOUT_MS = 7000;
+const PLATFORM_FEE_RATE = Number(process.env.PLATFORM_FEE_RATE || 0.03);
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
+const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || '';
+const COOKIE_SAME_SITE_RAW = String(process.env.COOKIE_SAME_SITE || (PROD ? 'none' : 'lax')).toLowerCase();
+const COOKIE_SAME_SITE =
+  COOKIE_SAME_SITE_RAW === 'strict'
+    ? 'strict'
+    : COOKIE_SAME_SITE_RAW === 'none'
+      ? 'none'
+      : 'lax';
+const COOKIE_SECURE =
+  String(process.env.COOKIE_SECURE || (PROD || COOKIE_SAME_SITE === 'none')).toLowerCase() === 'true';
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '';
 const META_CL_BASE_URL = process.env.META_CL_BASE_URL || 'https://graph.facebook.com/v22.0';
 const META_CL_ACCESS_TOKEN = process.env.META_CL_ACCESS_TOKEN || '';
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
@@ -44,6 +59,11 @@ const mailTransport = SMTP_HOST
       port: SMTP_PORT,
       secure: SMTP_SECURE,
       auth: SMTP_USER && SMTP_PASS ? { user: SMTP_USER, pass: SMTP_PASS } : undefined
+    })
+  : null;
+const stripe = STRIPE_SECRET_KEY
+  ? new Stripe(STRIPE_SECRET_KEY, {
+      apiVersion: '2025-02-24.acacia'
     })
   : null;
 
@@ -735,6 +755,90 @@ function writeStore(store) {
   fs.writeFileSync(USERS_PATH, JSON.stringify(store, null, 2));
 }
 
+function ensurePaymentsFile() {
+  if (!fs.existsSync(path.dirname(PAYMENTS_PATH))) {
+    fs.mkdirSync(path.dirname(PAYMENTS_PATH), { recursive: true });
+  }
+  if (!fs.existsSync(PAYMENTS_PATH)) {
+    fs.writeFileSync(PAYMENTS_PATH, JSON.stringify({ sessions: [], orders: [] }, null, 2));
+  }
+}
+
+function readPaymentsStore() {
+  ensurePaymentsFile();
+  try {
+    const raw = fs.readFileSync(PAYMENTS_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    return {
+      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+      orders: Array.isArray(parsed.orders) ? parsed.orders : []
+    };
+  } catch {
+    return { sessions: [], orders: [] };
+  }
+}
+
+function writePaymentsStore(store) {
+  fs.writeFileSync(PAYMENTS_PATH, JSON.stringify(store, null, 2));
+}
+
+function roundCurrency(n) {
+  return Math.round(Number(n || 0) * 100) / 100;
+}
+
+function dollarsToCents(amount) {
+  return Math.round(Number(amount || 0) * 100);
+}
+
+function centsToDollars(cents) {
+  return Math.round(Number(cents || 0)) / 100;
+}
+
+function sanitizeSellerType(raw) {
+  return raw === 'individual' ? 'individual' : 'vendor';
+}
+
+function normalizeCheckoutItems(rawItems = []) {
+  if (!Array.isArray(rawItems)) return [];
+  return rawItems
+    .map((item) => {
+      const amount = roundCurrency(item?.price);
+      if (!Number.isFinite(amount) || amount <= 0) return null;
+      const listingTitle = String(item?.listingTitle || item?.title || '').trim();
+      const listingId = String(item?.listingId || '').trim();
+      const sellerId = String(item?.sellerId || '').trim();
+      const sellerName = String(item?.sellerName || '').trim() || 'Seller';
+      if (!listingTitle || !listingId || !sellerId) return null;
+      return {
+        listingId,
+        listingTitle,
+        sellerType: sanitizeSellerType(item?.sellerType),
+        sellerId,
+        sellerName,
+        amount
+      };
+    })
+    .filter(Boolean);
+}
+
+function allocateFeeCentsAcrossItems(items, totalFeeCents) {
+  if (!items.length || totalFeeCents <= 0) {
+    return items.map(() => 0);
+  }
+  const grossTotal = items.reduce((sum, item) => sum + dollarsToCents(item.amount), 0);
+  if (!grossTotal) return items.map(() => 0);
+
+  const allocations = items.map((item) => Math.floor((dollarsToCents(item.amount) / grossTotal) * totalFeeCents));
+  let allocated = allocations.reduce((sum, v) => sum + v, 0);
+  let idx = 0;
+  while (allocated < totalFeeCents) {
+    allocations[idx % allocations.length] += 1;
+    allocated += 1;
+    idx += 1;
+  }
+  return allocations;
+}
+
 async function seedAdmin() {
   if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
     if (!PROD) {
@@ -779,14 +883,16 @@ function makeSessionToken(user) {
 }
 
 function sessionCookie(token) {
-  return {
+  const cookie = {
     httpOnly: true,
-    secure: PROD,
-    sameSite: 'lax',
+    secure: COOKIE_SECURE,
+    sameSite: COOKIE_SAME_SITE,
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000,
     value: token
   };
+  if (COOKIE_DOMAIN) cookie.domain = COOKIE_DOMAIN;
+  return cookie;
 }
 
 function sanitizeUser(user) {
@@ -799,6 +905,27 @@ function sanitizeUser(user) {
     vendorId: user.vendorId || undefined,
     vendorName: user.vendorName || undefined,
     vendorLocation: user.vendorLocation || undefined
+  };
+}
+
+function sanitizeOrder(order) {
+  return {
+    id: order.id,
+    ts: order.ts,
+    sellerType: order.sellerType,
+    sellerId: order.sellerId,
+    sellerName: order.sellerName,
+    amount: roundCurrency(order.amount),
+    grossAmount: roundCurrency(order.grossAmount ?? order.amount),
+    platformFeeAmount: roundCurrency(order.platformFeeAmount),
+    sellerNetAmount: roundCurrency(order.sellerNetAmount),
+    buyerId: order.buyerId,
+    buyerRole: order.buyerRole,
+    listingId: order.listingId,
+    listingTitle: order.listingTitle,
+    paymentProvider: order.paymentProvider || 'stripe',
+    paymentStatus: order.paymentStatus || 'paid',
+    paymentSessionId: order.paymentSessionId || null
   };
 }
 
@@ -837,6 +964,10 @@ app.get('/api/system/status', (_, res) => {
     mode: PROD ? 'production' : 'development',
     authRequiresEmailVerification: true,
     emailServiceConfigured: Boolean(mailTransport),
+    paymentsConfigured: Boolean(stripe),
+    platformFeeRate: PLATFORM_FEE_RATE,
+    cookieSameSite: COOKIE_SAME_SITE,
+    cookieSecure: COOKIE_SECURE,
     metaMarketplaceConfigured: Boolean(META_CL_ACCESS_TOKEN),
     allowedOrigins: ALLOWED_ORIGINS,
     apiVersion: '2026-02-27'
@@ -847,7 +978,14 @@ app.get('/api/auth/me', authRequired, (req, res) => {
   const store = readStore();
   const user = store.users.find((u) => u.id === req.user.sub);
   if (!user) {
-    res.clearCookie('ai_session', { path: '/' });
+    const clearCookieOptions = {
+      httpOnly: true,
+      secure: COOKIE_SECURE,
+      sameSite: COOKIE_SAME_SITE,
+      path: '/'
+    };
+    if (COOKIE_DOMAIN) clearCookieOptions.domain = COOKIE_DOMAIN;
+    res.clearCookie('ai_session', clearCookieOptions);
     res.status(401).json({ error: 'Session user not found' });
     return;
   }
@@ -1075,13 +1213,214 @@ app.post('/api/auth/resend-verification', async (req, res) => {
 });
 
 app.post('/api/auth/logout', (_, res) => {
-  res.clearCookie('ai_session', {
+  const clearCookieOptions = {
     httpOnly: true,
-    secure: PROD,
-    sameSite: 'lax',
+    secure: COOKIE_SECURE,
+    sameSite: COOKIE_SAME_SITE,
     path: '/'
-  });
+  };
+  if (COOKIE_DOMAIN) clearCookieOptions.domain = COOKIE_DOMAIN;
+  res.clearCookie('ai_session', clearCookieOptions);
   res.json({ ok: true });
+});
+
+app.get('/api/payments/config', (_, res) => {
+  res.json({
+    ok: true,
+    provider: 'stripe',
+    configured: Boolean(stripe),
+    publishableKey: STRIPE_PUBLISHABLE_KEY || null,
+    googlePayAvailability: 'Google Pay is shown by Stripe Checkout when browser/device/domain are eligible.',
+    platformFeeRate: PLATFORM_FEE_RATE
+  });
+});
+
+app.get('/api/payments/orders', authRequired, (req, res) => {
+  const paymentsStore = readPaymentsStore();
+  const userRole = req.user.role;
+  let scoped = paymentsStore.orders;
+
+  if (userRole === 'admin') {
+    scoped = paymentsStore.orders;
+  } else if (userRole === 'vendor') {
+    const store = readStore();
+    const me = store.users.find((u) => u.id === req.user.sub);
+    const vendorId = me?.vendorId || req.user.vendorId || null;
+    scoped = vendorId
+      ? paymentsStore.orders.filter((o) => o.sellerType === 'vendor' && o.sellerId === vendorId)
+      : [];
+  } else {
+    scoped = paymentsStore.orders.filter((o) => o.buyerId === req.user.sub || o.sellerId === req.user.sub);
+  }
+
+  const ordered = [...scoped].sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0)).map(sanitizeOrder);
+  res.json({ orders: ordered });
+});
+
+app.post('/api/payments/create-checkout-session', authRequired, async (req, res) => {
+  if (!stripe) {
+    res.status(503).json({ error: 'Stripe is not configured on this backend.' });
+    return;
+  }
+  if (req.user.role !== 'individual') {
+    res.status(403).json({ error: 'Only Individual Users can checkout.' });
+    return;
+  }
+
+  const items = normalizeCheckoutItems(req.body?.items);
+  if (!items.length) {
+    res.status(400).json({ error: 'Cart is empty or invalid.' });
+    return;
+  }
+
+  const grossCents = items.reduce((sum, item) => sum + dollarsToCents(item.amount), 0);
+  const platformFeeCents = Math.max(0, Math.round(grossCents * PLATFORM_FEE_RATE));
+  const sellerNetCents = Math.max(0, grossCents - platformFeeCents);
+  const pendingOrderId = randomUUID();
+  const baseUrl = APP_BASE_URL.endsWith('/') ? APP_BASE_URL.slice(0, -1) : APP_BASE_URL;
+
+  try {
+    const checkoutSession = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      success_url: `${baseUrl}?checkout_success=1&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}?checkout_canceled=1`,
+      allow_promotion_codes: false,
+      billing_address_collection: 'auto',
+      line_items: items.map((item) => ({
+        quantity: 1,
+        price_data: {
+          currency: 'usd',
+          unit_amount: dollarsToCents(item.amount),
+          product_data: {
+            name: item.listingTitle
+          }
+        }
+      })),
+      metadata: {
+        pendingOrderId,
+        buyerId: req.user.sub,
+        buyerRole: req.user.role,
+        platformFeeCents: String(platformFeeCents),
+        platformFeeRate: String(PLATFORM_FEE_RATE)
+      }
+    });
+
+    const paymentsStore = readPaymentsStore();
+    paymentsStore.sessions.push({
+      id: pendingOrderId,
+      sessionId: checkoutSession.id,
+      buyerId: req.user.sub,
+      buyerRole: req.user.role,
+      grossAmount: centsToDollars(grossCents),
+      platformFeeAmount: centsToDollars(platformFeeCents),
+      sellerNetAmount: centsToDollars(sellerNetCents),
+      items,
+      status: 'pending',
+      createdAt: Date.now(),
+      completedAt: null
+    });
+    writePaymentsStore(paymentsStore);
+
+    res.json({
+      ok: true,
+      provider: 'stripe',
+      sessionId: checkoutSession.id,
+      checkoutUrl: checkoutSession.url,
+      grossAmount: centsToDollars(grossCents),
+      platformFeeAmount: centsToDollars(platformFeeCents),
+      sellerNetAmount: centsToDollars(sellerNetCents),
+      platformFeeRate: PLATFORM_FEE_RATE
+    });
+  } catch (error) {
+    res.status(502).json({ error: 'Unable to create checkout session.', details: String(error?.message || error) });
+  }
+});
+
+app.post('/api/payments/confirm-checkout-session', authRequired, async (req, res) => {
+  if (!stripe) {
+    res.status(503).json({ error: 'Stripe is not configured on this backend.' });
+    return;
+  }
+  const sessionId = String(req.body?.sessionId || '').trim();
+  if (!sessionId) {
+    res.status(400).json({ error: 'sessionId is required.' });
+    return;
+  }
+
+  const paymentsStore = readPaymentsStore();
+  const pending = paymentsStore.sessions.find((s) => s.sessionId === sessionId);
+  if (!pending) {
+    res.status(404).json({ error: 'Checkout session not found.' });
+    return;
+  }
+  if (req.user.role !== 'admin' && pending.buyerId !== req.user.sub) {
+    res.status(403).json({ error: 'Not authorized for this checkout session.' });
+    return;
+  }
+
+  if (pending.status === 'paid') {
+    const existing = paymentsStore.orders
+      .filter((o) => o.paymentSessionId === sessionId)
+      .sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0))
+      .map(sanitizeOrder);
+    res.json({ ok: true, paid: true, orderCount: existing.length, orders: existing });
+    return;
+  }
+
+  try {
+    const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
+    const paid = checkoutSession.payment_status === 'paid';
+    if (!paid) {
+      res.json({ ok: true, paid: false, paymentStatus: checkoutSession.payment_status });
+      return;
+    }
+
+    const totalPlatformFeeCents = dollarsToCents(pending.platformFeeAmount);
+    const allocations = allocateFeeCentsAcrossItems(pending.items, totalPlatformFeeCents);
+    const createdAt = Date.now();
+    const orders = pending.items.map((item, idx) => {
+      const grossCents = dollarsToCents(item.amount);
+      const feeCents = allocations[idx] ?? 0;
+      const netCents = Math.max(0, grossCents - feeCents);
+      return {
+        id: `ord-${randomUUID()}`,
+        paymentSessionId: sessionId,
+        ts: createdAt,
+        sellerType: item.sellerType,
+        sellerId: item.sellerId,
+        sellerName: item.sellerName,
+        amount: centsToDollars(grossCents),
+        grossAmount: centsToDollars(grossCents),
+        platformFeeAmount: centsToDollars(feeCents),
+        sellerNetAmount: centsToDollars(netCents),
+        buyerId: pending.buyerId,
+        buyerRole: pending.buyerRole,
+        listingId: item.listingId,
+        listingTitle: item.listingTitle,
+        paymentProvider: 'stripe',
+        paymentStatus: 'paid'
+      };
+    });
+
+    paymentsStore.orders.push(...orders);
+    pending.status = 'paid';
+    pending.completedAt = createdAt;
+    pending.paymentIntentId = checkoutSession.payment_intent || null;
+    writePaymentsStore(paymentsStore);
+
+    res.json({
+      ok: true,
+      paid: true,
+      provider: 'stripe',
+      orderCount: orders.length,
+      orders: orders.map(sanitizeOrder),
+      grossAmount: roundCurrency(pending.grossAmount),
+      platformFeeAmount: roundCurrency(pending.platformFeeAmount),
+      sellerNetAmount: roundCurrency(pending.sellerNetAmount)
+    });
+  } catch (error) {
+    res.status(502).json({ error: 'Unable to confirm checkout session.', details: String(error?.message || error) });
+  }
 });
 
 app.post('/api/market-intelligence/analyze', async (req, res) => {

@@ -24,7 +24,12 @@ AutoIndex uses `VITE_BASE_PATH` at build time.
 Use the existing GitHub Actions workflow. Ensure build env includes:
 
 - `VITE_BASE_PATH=/autoindex/`
-- `VITE_API_BASE_URL=https://<your-api-domain>` (optional; omit for template mode)
+- `VITE_API_BASE_URL=https://<your-api-domain>`
+
+Notes:
+
+- Workflow fallback order is: repository variable `VITE_API_BASE_URL` -> secret `VITE_API_BASE_URL` -> `https://autoindex-api.onrender.com`.
+- Use a repository variable for standard configuration and reserve secrets for overrides.
 
 Live URL format:
 
@@ -78,6 +83,19 @@ For connected backend mode, set:
 - `SESSION_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` (backend)
 - `APP_BASE_URL` (frontend URL used in verification email links)
 - `EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` (email verification delivery)
+- `COOKIE_SAME_SITE=none` and `COOKIE_SECURE=true` for GitHub Pages/custom-domain frontend hitting a separate backend domain
+- `COOKIE_DOMAIN` (optional; only if you need explicit cookie scoping)
+- `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`
+- `PLATFORM_FEE_RATE=0.03`
 - `PASSWORD_MIN_LENGTH` and `EMAIL_VERIFY_TOKEN_TTL_HOURS` (optional auth policy tuning)
 - `ALLOWED_ORIGINS` to include your frontend domain
 - `META_CL_ACCESS_TOKEN` for Facebook Marketplace API integration
+
+## 8) Payments (Stripe + Google Pay)
+
+- AutoIndex uses Stripe Checkout for payments.
+- The 3% platform fee is calculated server-side and reflected in admin/vendor reporting.
+- Google Pay availability is managed by Stripe Checkout and only appears when:
+  - Stripe account is correctly configured
+  - the checkout domain is eligible/verified in Stripe
+  - client browser/device wallet support is present

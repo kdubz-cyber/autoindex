@@ -2,4 +2,5 @@ node_modules/
 dist/
 .env
 server/data/users.json
+server/data/payments.json
 .DS_Store
