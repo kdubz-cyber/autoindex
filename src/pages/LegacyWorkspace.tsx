@@ -333,629 +333,518 @@ const MARKET_DEMAND_FACTORS: Array<{ key: DemandKey; label: string; factor: numb
   { key: 'cult_track_proven', label: 'Cult / Track Proven', factor: 1.2 }
 ];
 
-type PriceBand = {
-  low: number | null;
-  mid: number | null;
-  high: number | null;
+type ResearchYear = 1996 | 2006 | 2016 | 2021 | 2026;
+type ManufacturerGroup =
+  | 'Toyota'
+  | 'Ford'
+  | 'GM'
+  | 'Honda'
+  | 'Nissan'
+  | 'BMW'
+  | 'Mercedes'
+  | 'Volkswagen'
+  | 'Hyundai/Kia'
+  | 'Stellantis'
+  | 'Other';
+type ResearchPartCategory =
+  | 'Engine'
+  | 'Transmission'
+  | 'Alternator'
+  | 'Starter'
+  | 'Door'
+  | 'Bumper'
+  | 'Headlight'
+  | 'Airbag'
+  | 'ECU';
+
+type UsedPartsResearchRow = {
+  manufacturerGroup: ManufacturerGroup;
+  partCategory: ResearchPartCategory;
+  partSubtypes: string;
+  usedPriceCurrentUsd: number;
+  newOemPriceCurrentUsd: number;
+  usedPrice2021Usd: number;
+  usedPrice2016Usd: number;
+  usedPrice2006Usd: number;
+  usedPrice1996Usd: number;
+  usedNewRatioCurrent: number;
+  usedPriceSdCurrentUsd: number;
+  newOemPriceSdCurrentUsd: number;
+  usedSampleNCurrent: number;
+  newOemSampleNCurrent: number;
+  assumedRegion: 'US';
+  assumedVehicleAgeBand: string;
+  assumedMileageBand: string;
+  assumedConditionBand: string;
+  notesConditionFitment: string;
+  imputationFlags: string;
 };
 
-type PartPriceMatrixRow = {
-  modelFamily: string;
-  part: string;
-  newBand: PriceBand | null;
-  aftermarketBand: PriceBand | null;
-  usedBand: PriceBand | null;
-  evidence: 'ASK' | 'SOLD+ASK';
-  notes?: string;
+type ManufacturerAverageRow = {
+  manufacturerGroup: ManufacturerGroup;
+  avgUsedPriceCurrentUsd: number;
+  avgNewOemPriceCurrentUsd: number;
+  avgUsedNewRatioCurrent: number;
 };
 
-const priceBand = (low: number | null, mid: number | null, high: number | null): PriceBand => ({ low, mid, high });
+type PartCategoryAverageRow = {
+  partCategory: ResearchPartCategory;
+  avgUsedPriceCurrentUsd: number;
+  avgNewOemPriceCurrentUsd: number;
+  avgUsedNewRatioCurrent: number;
+};
 
-const PART_PRICE_MATRIX_ROWS: PartPriceMatrixRow[] = [
-  {
-    modelFamily: 'Ford F-150 (2015-2017)',
-    part: 'Engine assembly (5.0 VIN F)',
-    newBand: null,
-    aftermarketBand: priceBand(6738, 6738, 6738),
-    usedBand: priceBand(2891, 3581, 4250),
-    evidence: 'SOLD+ASK',
-    notes: 'Reman anchor in aftermarket/Reman column.'
-  },
-  {
-    modelFamily: 'Ford F-150 (2015-2017)',
-    part: 'Transmission assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(783, 1108, 1175),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Ford F-150 (2015-2017)',
-    part: 'ECU / PCM',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(79, 84, 159),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Ford F-150 (2015-2017)',
-    part: 'Headlamp assembly',
-    newBand: priceBand(1235, 1235, 1235),
-    aftermarketBand: priceBand(94, 246, 426),
-    usedBand: null,
-    evidence: 'ASK',
-    notes: 'New column reflects OEM anchor; aftermarket is economy-to-premium non-OEM.'
-  },
-  {
-    modelFamily: 'Ford F-150 (2015-2017)',
-    part: 'Catalytic converter',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: null,
-    evidence: 'ASK',
-    notes: 'Model-specific stable pricing not available in sampled set.'
-  },
+type ManufacturerMultiplierRow = {
+  manufacturerGroup: ManufacturerGroup;
+  priceLevelMultiplierNewOem: number;
+};
 
-  {
-    modelFamily: 'Chevrolet Silverado 1500 (2013)',
-    part: 'Engine assembly (5.3)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(1667, 2250, 3581),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Chevrolet Silverado 1500 (2013)',
-    part: 'Transmission assembly',
-    newBand: priceBand(4214, 4214, 4214),
-    aftermarketBand: null,
-    usedBand: priceBand(1532, 1739, 1971),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Chevrolet Silverado 1500 (2013)',
-    part: 'ECU / ECM',
-    newBand: null,
-    aftermarketBand: priceBand(187, 187, 187),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Chevrolet Silverado 1500 (2013)',
-    part: 'Headlamp assembly',
-    newBand: null,
-    aftermarketBand: priceBand(61, 120, 200),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Chevrolet Silverado 1500 (2013)',
-    part: 'Catalytic converter',
-    newBand: null,
-    aftermarketBand: priceBand(180, 180, 180),
-    usedBand: null,
-    evidence: 'ASK'
-  },
+const CPI_PARTS_ANCHORS: Array<{ year: ResearchYear; index: number }> = [
+  { year: 1996, index: 102.3 },
+  { year: 2006, index: 114.4 },
+  { year: 2016, index: 144.784 },
+  { year: 2021, index: 149.198 },
+  { year: 2026, index: 186.92 }
+];
 
-  {
-    modelFamily: 'Jeep Wrangler JK (2012)',
-    part: 'Engine assembly (3.6L)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(4122, 4122, 4122),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Jeep Wrangler JK (2012)',
-    part: 'Transmission assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(1626, 1798, 1971),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Jeep Wrangler JK (2012)',
-    part: 'PCM / ECU',
-    newBand: null,
-    aftermarketBand: priceBand(794, 794, 794),
-    usedBand: priceBand(129, 240, 350),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Jeep Wrangler JK (2012)',
-    part: 'Headlight assembly',
-    newBand: null,
-    aftermarketBand: priceBand(110, 186, 769),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Jeep Wrangler JK (2012)',
-    part: 'Catalytic converter',
-    newBand: null,
-    aftermarketBand: priceBand(238, 259, 274),
-    usedBand: null,
-    evidence: 'ASK'
-  },
+const USED_PARTS_MANUFACTURER_MULTIPLIERS: ManufacturerMultiplierRow[] = [
+  { manufacturerGroup: 'BMW', priceLevelMultiplierNewOem: 2.177 },
+  { manufacturerGroup: 'Mercedes', priceLevelMultiplierNewOem: 2.01 },
+  { manufacturerGroup: 'Honda', priceLevelMultiplierNewOem: 1.508 },
+  { manufacturerGroup: 'Hyundai/Kia', priceLevelMultiplierNewOem: 1.34 },
+  { manufacturerGroup: 'GM', priceLevelMultiplierNewOem: 1.021 },
+  { manufacturerGroup: 'Toyota', priceLevelMultiplierNewOem: 1.0 },
+  { manufacturerGroup: 'Other', priceLevelMultiplierNewOem: 1.0 },
+  { manufacturerGroup: 'Stellantis', priceLevelMultiplierNewOem: 0.967 },
+  { manufacturerGroup: 'Ford', priceLevelMultiplierNewOem: 0.864 },
+  { manufacturerGroup: 'Nissan', priceLevelMultiplierNewOem: 0.834 },
+  { manufacturerGroup: 'Volkswagen', priceLevelMultiplierNewOem: 0.681 }
+];
 
-  {
-    modelFamily: 'Toyota Tacoma (2013)',
-    part: 'Engine assembly (4.0L)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(3821, 4250, 5000),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Toyota Tacoma (2013)',
-    part: 'Transmission assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(1022, 1022, 1022),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Toyota Tacoma (2013)',
-    part: 'PCM / ECU',
-    newBand: null,
-    aftermarketBand: priceBand(312, 500, 500),
-    usedBand: priceBand(151, 192, 300),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Toyota Tacoma (2013)',
-    part: 'Headlight assembly',
-    newBand: null,
-    aftermarketBand: priceBand(94, 188, 769),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Toyota Tacoma (2013)',
-    part: 'Catalytic converter',
-    newBand: null,
-    aftermarketBand: priceBand(297, 319, 820),
-    usedBand: null,
-    evidence: 'ASK'
-  },
+const USED_PARTS_MANUFACTURER_AVERAGES: ManufacturerAverageRow[] = [
+  { manufacturerGroup: 'BMW', avgUsedPriceCurrentUsd: 893.31, avgNewOemPriceCurrentUsd: 5058.94, avgUsedNewRatioCurrent: 0.251 },
+  { manufacturerGroup: 'Ford', avgUsedPriceCurrentUsd: 388.7, avgNewOemPriceCurrentUsd: 2006.87, avgUsedNewRatioCurrent: 0.276 },
+  { manufacturerGroup: 'GM', avgUsedPriceCurrentUsd: 451.87, avgNewOemPriceCurrentUsd: 2372.36, avgUsedNewRatioCurrent: 0.271 },
+  { manufacturerGroup: 'Honda', avgUsedPriceCurrentUsd: 641.82, avgNewOemPriceCurrentUsd: 3503.63, avgUsedNewRatioCurrent: 0.261 },
+  { manufacturerGroup: 'Hyundai/Kia', avgUsedPriceCurrentUsd: 577.27, avgNewOemPriceCurrentUsd: 3114.34, avgUsedNewRatioCurrent: 0.264 },
+  { manufacturerGroup: 'Mercedes', avgUsedPriceCurrentUsd: 831.32, avgNewOemPriceCurrentUsd: 4670.46, avgUsedNewRatioCurrent: 0.253 },
+  { manufacturerGroup: 'Nissan', avgUsedPriceCurrentUsd: 376.67, avgNewOemPriceCurrentUsd: 1937.98, avgUsedNewRatioCurrent: 0.277 },
+  { manufacturerGroup: 'Other', avgUsedPriceCurrentUsd: 443.49, avgNewOemPriceCurrentUsd: 2323.52, avgUsedNewRatioCurrent: 0.272 },
+  { manufacturerGroup: 'Stellantis', avgUsedPriceCurrentUsd: 430.42, avgNewOemPriceCurrentUsd: 2247.6, avgUsedNewRatioCurrent: 0.273 },
+  { manufacturerGroup: 'Toyota', avgUsedPriceCurrentUsd: 443.49, avgNewOemPriceCurrentUsd: 2323.52, avgUsedNewRatioCurrent: 0.272 },
+  { manufacturerGroup: 'Volkswagen', avgUsedPriceCurrentUsd: 313.96, avgNewOemPriceCurrentUsd: 1582.99, avgUsedNewRatioCurrent: 0.282 }
+];
 
-  {
-    modelFamily: 'Toyota Camry (2012-2015)',
-    part: 'Engine assembly (2.5L)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(1538, 1538, 1538),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Toyota Camry (2012-2015)',
-    part: 'Transmission assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(1022, 1131, 1839),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Toyota Camry (2012-2015)',
-    part: 'ECU / ECM',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(71, 73, 75),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Toyota Camry (2012-2015)',
-    part: 'Headlight assembly',
-    newBand: null,
-    aftermarketBand: priceBand(38, 58, 116),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Toyota Camry (2012-2015)',
-    part: 'Catalytic converter',
-    newBand: priceBand(895, 1042, 1200),
-    aftermarketBand: priceBand(97, 388, 992),
-    usedBand: null,
-    evidence: 'ASK'
-  },
+const USED_PARTS_CATEGORY_AVERAGES: PartCategoryAverageRow[] = [
+  { partCategory: 'Airbag', avgUsedPriceCurrentUsd: 200.66, avgNewOemPriceCurrentUsd: 1405.11, avgUsedNewRatioCurrent: 0.145 },
+  { partCategory: 'Alternator', avgUsedPriceCurrentUsd: 100.92, avgNewOemPriceCurrentUsd: 856.9, avgUsedNewRatioCurrent: 0.119 },
+  { partCategory: 'Bumper', avgUsedPriceCurrentUsd: 178.1, avgNewOemPriceCurrentUsd: 304.4, avgUsedNewRatioCurrent: 0.593 },
+  { partCategory: 'Door', avgUsedPriceCurrentUsd: 411.72, avgNewOemPriceCurrentUsd: 1161.9, avgUsedNewRatioCurrent: 0.359 },
+  { partCategory: 'ECU', avgUsedPriceCurrentUsd: 37.77, avgNewOemPriceCurrentUsd: 1425.18, avgUsedNewRatioCurrent: 0.027 },
+  { partCategory: 'Engine', avgUsedPriceCurrentUsd: 2179.97, avgNewOemPriceCurrentUsd: 14508.19, avgUsedNewRatioCurrent: 0.152 },
+  { partCategory: 'Headlight', avgUsedPriceCurrentUsd: 220.73, avgNewOemPriceCurrentUsd: 613.07, avgUsedNewRatioCurrent: 0.365 },
+  { partCategory: 'Starter', avgUsedPriceCurrentUsd: 103.2, avgNewOemPriceCurrentUsd: 270.96, avgUsedNewRatioCurrent: 0.386 },
+  { partCategory: 'Transmission', avgUsedPriceCurrentUsd: 1306.09, avgNewOemPriceCurrentUsd: 4934.29, avgUsedNewRatioCurrent: 0.268 }
+];
 
+const USED_PARTS_MATRIX_ROWS: UsedPartsResearchRow[] = [
   {
-    modelFamily: 'Honda Civic (2016)',
-    part: 'Engine assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(407, 783, 908),
-    evidence: 'ASK'
+    manufacturerGroup: 'Toyota',
+    partCategory: 'Engine',
+    partSubtypes: 'complete assembly (long block), short block, partial engine assembly',
+    usedPriceCurrentUsd: 1835.99,
+    newOemPriceCurrentUsd: 11907.01,
+    usedPrice2021Usd: 1465.47,
+    usedPrice2016Usd: 1422.12,
+    usedPrice2006Usd: 1123.0,
+    usedPrice1996Usd: 1004.92,
+    usedNewRatioCurrent: 0.1542,
+    usedPriceSdCurrentUsd: 642.6,
+    newOemPriceSdCurrentUsd: 2976.75,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment:
+      'Used price from a recycled complete engine listing; new price referenced as OEM partial engine assembly; engine pricing varies with displacement and emissions kit.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Honda Civic (2016)',
-    part: 'Transmission assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(476, 533, 901),
-    evidence: 'ASK'
+    manufacturerGroup: 'Toyota',
+    partCategory: 'Transmission',
+    partSubtypes: 'automatic transaxle, manual transmission, CVT',
+    usedPriceCurrentUsd: 1100.0,
+    newOemPriceCurrentUsd: 4049.62,
+    usedPrice2021Usd: 877.94,
+    usedPrice2016Usd: 851.99,
+    usedPrice2006Usd: 672.97,
+    usedPrice1996Usd: 602.05,
+    usedNewRatioCurrent: 0.2716,
+    usedPriceSdCurrentUsd: 330.0,
+    newOemPriceSdCurrentUsd: 809.92,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'New price referenced as OEM automatic transaxle assembly; core charges may apply.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Honda Civic (2016)',
-    part: 'ECM',
-    newBand: priceBand(372, 430, 621),
-    aftermarketBand: null,
-    usedBand: priceBand(121, 130, 161),
-    evidence: 'ASK'
+    manufacturerGroup: 'Toyota',
+    partCategory: 'Alternator',
+    partSubtypes: 'alternator with regulator, reman alternator, mild-hybrid starter-generator',
+    usedPriceCurrentUsd: 85.0,
+    newOemPriceCurrentUsd: 703.27,
+    usedPrice2021Usd: 67.88,
+    usedPrice2016Usd: 65.87,
+    usedPrice2006Usd: 52.02,
+    usedPrice1996Usd: 46.48,
+    usedNewRatioCurrent: 0.1209,
+    usedPriceSdCurrentUsd: 29.75,
+    newOemPriceSdCurrentUsd: 105.49,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Used alternator values depend on mileage, bearing wear, and warranty coverage.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Honda Civic (2016)',
-    part: 'Headlight assembly',
-    newBand: null,
-    aftermarketBand: priceBand(94, 219, 654),
-    usedBand: null,
-    evidence: 'ASK'
+    manufacturerGroup: 'Toyota',
+    partCategory: 'Starter',
+    partSubtypes: 'starter motor assembly, reman starter',
+    usedPriceCurrentUsd: 86.92,
+    newOemPriceCurrentUsd: 222.38,
+    usedPrice2021Usd: 69.41,
+    usedPrice2016Usd: 67.35,
+    usedPrice2006Usd: 53.14,
+    usedPrice1996Usd: 47.5,
+    usedNewRatioCurrent: 0.3909,
+    usedPriceSdCurrentUsd: 30.42,
+    newOemPriceSdCurrentUsd: 33.36,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Starter pricing is sensitive to engine options and stop-start hardware.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Honda Civic (2016)',
-    part: 'Catalytic converter',
-    newBand: null,
-    aftermarketBand: priceBand(204, 219, 508),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-
-  {
-    modelFamily: 'Subaru WRX (2015)',
-    part: 'Engine assembly (2.0T)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(1904, 4536, 5200),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Subaru WRX (2015)',
-    part: 'Transmission assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(1707, 1707, 1707),
-    evidence: 'ASK'
+    manufacturerGroup: 'Toyota',
+    partCategory: 'Door',
+    partSubtypes: 'door shell, door complete (glass/regulator), trim panel',
+    usedPriceCurrentUsd: 346.75,
+    newOemPriceCurrentUsd: 953.58,
+    usedPrice2021Usd: 276.57,
+    usedPrice2016Usd: 268.35,
+    usedPrice2006Usd: 211.74,
+    usedPrice1996Usd: 189.29,
+    usedNewRatioCurrent: 0.3635,
+    usedPriceSdCurrentUsd: 104.02,
+    newOemPriceSdCurrentUsd: 190.72,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Used body panels are freight-sensitive; color and trim match shift clearing price.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Subaru WRX (2015)',
-    part: 'ECU',
-    newBand: null,
-    aftermarketBand: priceBand(450, 450, 450),
-    usedBand: priceBand(55, 155, 275),
-    evidence: 'ASK'
+    manufacturerGroup: 'Toyota',
+    partCategory: 'Bumper',
+    partSubtypes: 'bumper cover, reinforcement, absorber/energy foam',
+    usedPriceCurrentUsd: 150.0,
+    newOemPriceCurrentUsd: 249.82,
+    usedPrice2021Usd: 119.72,
+    usedPrice2016Usd: 116.16,
+    usedPrice2006Usd: 91.59,
+    usedPrice1996Usd: 81.75,
+    usedNewRatioCurrent: 0.6004,
+    usedPriceSdCurrentUsd: 45.0,
+    newOemPriceSdCurrentUsd: 37.47,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Bumper cover values often exclude paint and clip kits.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Subaru WRX (2015)',
-    part: 'Headlight assembly',
-    newBand: null,
-    aftermarketBand: priceBand(202, 234, 319),
-    usedBand: null,
-    evidence: 'ASK'
+    manufacturerGroup: 'Toyota',
+    partCategory: 'Headlight',
+    partSubtypes: 'halogen, HID/xenon, LED, adaptive assemblies',
+    usedPriceCurrentUsd: 185.9,
+    newOemPriceCurrentUsd: 503.15,
+    usedPrice2021Usd: 148.4,
+    usedPrice2016Usd: 144.0,
+    usedPrice2006Usd: 113.46,
+    usedPrice1996Usd: 101.45,
+    usedNewRatioCurrent: 0.3695,
+    usedPriceSdCurrentUsd: 74.36,
+    newOemPriceSdCurrentUsd: 176.1,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Tab condition, lens haze, and module inclusion create wide spread.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Subaru WRX (2015)',
-    part: 'Catalytic converter',
-    newBand: null,
-    aftermarketBand: priceBand(272, 281, 291),
-    usedBand: null,
-    evidence: 'ASK'
+    manufacturerGroup: 'Toyota',
+    partCategory: 'Airbag',
+    partSubtypes: 'steering, knee, curtain, passenger module',
+    usedPriceCurrentUsd: 169.0,
+    newOemPriceCurrentUsd: 1153.19,
+    usedPrice2021Usd: 134.92,
+    usedPrice2016Usd: 130.91,
+    usedPrice2006Usd: 103.2,
+    usedPrice1996Usd: 92.49,
+    usedNewRatioCurrent: 0.1466,
+    usedPriceSdCurrentUsd: 59.15,
+    newOemPriceSdCurrentUsd: 345.96,
+    usedSampleNCurrent: 2,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Airbag modules require strict provenance and deployment-state verification.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
+  },
+  {
+    manufacturerGroup: 'Toyota',
+    partCategory: 'ECU',
+    partSubtypes: 'ECM/PCM, BCM, SRS module, ABS module',
+    usedPriceCurrentUsd: 31.81,
+    newOemPriceCurrentUsd: 1169.66,
+    usedPrice2021Usd: 25.39,
+    usedPrice2016Usd: 24.64,
+    usedPrice2006Usd: 19.44,
+    usedPrice1996Usd: 17.39,
+    usedNewRatioCurrent: 0.0272,
+    usedPriceSdCurrentUsd: 15.9,
+    newOemPriceSdCurrentUsd: 350.9,
+    usedSampleNCurrent: 2,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Used modules may require programming, immobilizer pairing, or cloning.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
 
   {
-    modelFamily: 'Volkswagen Golf Mk7 (2015)',
-    part: 'Engine assembly (1.8T)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(1175, 1942, 2300),
-    evidence: 'ASK'
+    manufacturerGroup: 'Ford',
+    partCategory: 'Engine',
+    partSubtypes: 'complete assembly (long block), short block, partial engine assembly',
+    usedPriceCurrentUsd: 1608.89,
+    newOemPriceCurrentUsd: 10284.85,
+    usedPrice2021Usd: 1284.27,
+    usedPrice2016Usd: 1246.46,
+    usedPrice2006Usd: 984.09,
+    usedPrice1996Usd: 880.64,
+    usedNewRatioCurrent: 0.1564,
+    usedPriceSdCurrentUsd: 563.11,
+    newOemPriceSdCurrentUsd: 2571.21,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Assembly price variance is heavily driven by displacement, accessories, and emissions kit.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Volkswagen Golf Mk7 (2015)',
-    part: 'Transmission assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(1100, 1100, 1100),
-    evidence: 'ASK'
+    manufacturerGroup: 'Ford',
+    partCategory: 'Transmission',
+    partSubtypes: 'automatic transaxle, manual transmission, CVT',
+    usedPriceCurrentUsd: 963.97,
+    newOemPriceCurrentUsd: 3497.86,
+    usedPrice2021Usd: 769.22,
+    usedPrice2016Usd: 746.49,
+    usedPrice2006Usd: 589.8,
+    usedPrice1996Usd: 527.62,
+    usedNewRatioCurrent: 0.2755,
+    usedPriceSdCurrentUsd: 289.19,
+    newOemPriceSdCurrentUsd: 699.57,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Core deposits and model-specific calibration materially affect all-in cost.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Volkswagen Golf Mk7 (2015)',
-    part: 'ECU / ECM',
-    newBand: null,
-    aftermarketBand: priceBand(555, 555, 555),
-    usedBand: priceBand(70, 130, 159),
-    evidence: 'ASK'
+    manufacturerGroup: 'Ford',
+    partCategory: 'Alternator',
+    partSubtypes: 'alternator with regulator, reman alternator, mild-hybrid starter-generator',
+    usedPriceCurrentUsd: 74.49,
+    newOemPriceCurrentUsd: 607.45,
+    usedPrice2021Usd: 59.44,
+    usedPrice2016Usd: 57.69,
+    usedPrice2006Usd: 45.57,
+    usedPrice1996Usd: 40.86,
+    usedNewRatioCurrent: 0.1227,
+    usedPriceSdCurrentUsd: 26.07,
+    newOemPriceSdCurrentUsd: 91.12,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Used units are sensitive to pulley/bearing condition and return policy.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Volkswagen Golf Mk7 (2015)',
-    part: 'Headlight assembly',
-    newBand: null,
-    aftermarketBand: priceBand(38, 114, 212),
-    usedBand: null,
-    evidence: 'ASK'
+    manufacturerGroup: 'Ford',
+    partCategory: 'Starter',
+    partSubtypes: 'starter motor assembly, reman starter',
+    usedPriceCurrentUsd: 76.17,
+    newOemPriceCurrentUsd: 192.09,
+    usedPrice2021Usd: 60.83,
+    usedPrice2016Usd: 59.03,
+    usedPrice2006Usd: 46.62,
+    usedPrice1996Usd: 41.79,
+    usedNewRatioCurrent: 0.3965,
+    usedPriceSdCurrentUsd: 26.66,
+    newOemPriceSdCurrentUsd: 28.81,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Stop-start and engine-option differences create SKU-level spread.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Volkswagen Golf Mk7 (2015)',
-    part: 'Catalytic converter',
-    newBand: priceBand(2095, 2095, 2095),
-    aftermarketBand: priceBand(195, 528, 700),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-
-  {
-    modelFamily: 'Nissan 350Z (2006)',
-    part: 'Engine assembly (VQ35)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(1610, 3567, 3567),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Nissan 350Z (2006)',
-    part: 'Transmission assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(295, 752, 895),
-    evidence: 'ASK'
+    manufacturerGroup: 'Ford',
+    partCategory: 'Door',
+    partSubtypes: 'door shell, door complete (glass/regulator), trim panel',
+    usedPriceCurrentUsd: 303.52,
+    newOemPriceCurrentUsd: 823.69,
+    usedPrice2021Usd: 242.15,
+    usedPrice2016Usd: 234.98,
+    usedPrice2006Usd: 185.3,
+    usedPrice1996Usd: 165.97,
+    usedNewRatioCurrent: 0.3685,
+    usedPriceSdCurrentUsd: 91.06,
+    newOemPriceSdCurrentUsd: 164.74,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Freight and paint readiness are common sources of quote variance.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Nissan 350Z (2006)',
-    part: 'ECU / PCM',
-    newBand: null,
-    aftermarketBand: priceBand(342, 383, 424),
-    usedBand: priceBand(100, 220, 350),
-    evidence: 'ASK'
+    manufacturerGroup: 'Ford',
+    partCategory: 'Bumper',
+    partSubtypes: 'bumper cover, reinforcement, absorber/energy foam',
+    usedPriceCurrentUsd: 131.46,
+    newOemPriceCurrentUsd: 215.77,
+    usedPrice2021Usd: 104.92,
+    usedPrice2016Usd: 101.82,
+    usedPrice2006Usd: 80.3,
+    usedPrice1996Usd: 71.89,
+    usedNewRatioCurrent: 0.6093,
+    usedPriceSdCurrentUsd: 39.44,
+    newOemPriceSdCurrentUsd: 32.37,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Bumper covers are highly condition-sensitive at mounting tabs and edges.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Nissan 350Z (2006)',
-    part: 'Headlight assembly',
-    newBand: null,
-    aftermarketBand: priceBand(98, 158, 654),
-    usedBand: null,
-    evidence: 'ASK'
+    manufacturerGroup: 'Ford',
+    partCategory: 'Headlight',
+    partSubtypes: 'halogen, HID/xenon, LED, adaptive assemblies',
+    usedPriceCurrentUsd: 163.03,
+    newOemPriceCurrentUsd: 434.39,
+    usedPrice2021Usd: 130.16,
+    usedPrice2016Usd: 126.3,
+    usedPrice2006Usd: 99.55,
+    usedPrice1996Usd: 89.15,
+    usedNewRatioCurrent: 0.3753,
+    usedPriceSdCurrentUsd: 65.21,
+    newOemPriceSdCurrentUsd: 152.04,
+    usedSampleNCurrent: 1,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Inclusion of ballast/module and lens condition drives large spread.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Nissan 350Z (2006)',
-    part: 'Catalytic converter',
-    newBand: null,
-    aftermarketBand: priceBand(296, 425, 1923),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-
-  {
-    modelFamily: 'Subaru BRZ / Scion FR-S (2013)',
-    part: 'Engine assembly (2.0L)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(4064, 4064, 4064),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Subaru BRZ / Scion FR-S (2013)',
-    part: 'Transmission assembly (MT)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(266, 332, 470),
-    evidence: 'ASK'
+    manufacturerGroup: 'Ford',
+    partCategory: 'Airbag',
+    partSubtypes: 'steering, knee, curtain, passenger module',
+    usedPriceCurrentUsd: 148.33,
+    newOemPriceCurrentUsd: 995.93,
+    usedPrice2021Usd: 118.41,
+    usedPrice2016Usd: 114.9,
+    usedPrice2006Usd: 90.64,
+    usedPrice1996Usd: 81.12,
+    usedNewRatioCurrent: 0.1489,
+    usedPriceSdCurrentUsd: 51.92,
+    newOemPriceSdCurrentUsd: 298.78,
+    usedSampleNCurrent: 2,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Safety documentation and deployment status are mandatory before purchase.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   },
   {
-    modelFamily: 'Subaru BRZ / Scion FR-S (2013)',
-    part: 'ECU / EGI control',
-    newBand: priceBand(694, 700, 706),
-    aftermarketBand: null,
-    usedBand: null,
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Subaru BRZ / Scion FR-S (2013)',
-    part: 'Headlight assembly',
-    newBand: null,
-    aftermarketBand: priceBand(342, 720, 1322),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Subaru BRZ / Scion FR-S (2013)',
-    part: 'Catalytic converter',
-    newBand: null,
-    aftermarketBand: priceBand(204, 500, 842),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-
-  {
-    modelFamily: 'Mazda MX-5 Miata NA (1990-1993)',
-    part: 'Engine assembly (1.6L)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(300, 1150, 1800),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Mazda MX-5 Miata NA (1990-1993)',
-    part: 'Transmission assembly (5-speed)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(250, 600, 895),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Mazda MX-5 Miata NA (1990-1993)',
-    part: 'ECU',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(155, 205, 220),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Mazda MX-5 Miata NA (1990-1993)',
-    part: 'Headlight assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: null,
-    evidence: 'ASK',
-    notes: 'No stable sampled pricing anchor captured.'
-  },
-  {
-    modelFamily: 'Mazda MX-5 Miata NA (1990-1993)',
-    part: 'Catalytic converter',
-    newBand: null,
-    aftermarketBand: priceBand(146, 159, 333),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-
-  {
-    modelFamily: 'Ford Mustang S197 (2011-2014)',
-    part: 'Engine assembly (5.0 VIN F)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(5329, 5329, 5329),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Ford Mustang S197 (2011-2014)',
-    part: 'Transmission assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: null,
-    evidence: 'ASK',
-    notes: 'Listing exists but sampled pricing spread was not stable.'
-  },
-  {
-    modelFamily: 'Ford Mustang S197 (2011-2014)',
-    part: 'ECM',
-    newBand: priceBand(661, 995, 995),
-    aftermarketBand: priceBand(321, 321, 321),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Ford Mustang S197 (2011-2014)',
-    part: 'Headlight assembly',
-    newBand: null,
-    aftermarketBand: priceBand(110, 252, 1398),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Ford Mustang S197 (2011-2014)',
-    part: 'Catalytic converter',
-    newBand: null,
-    aftermarketBand: priceBand(153, 203, 4087),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-
-  {
-    modelFamily: 'BMW 3-Series E46 325i (2003-2005)',
-    part: 'Engine assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(600, 1500, 2200),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'BMW 3-Series E46 325i (2003-2005)',
-    part: 'Transmission assembly',
-    newBand: null,
-    aftermarketBand: priceBand(2777, 2777, 2777),
-    usedBand: priceBand(894, 1197, 3114),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'BMW 3-Series E46 325i (2003-2005)',
-    part: 'ECU / DME',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(44, 72, 77),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'BMW 3-Series E46 325i (2003-2005)',
-    part: 'Headlight assembly',
-    newBand: null,
-    aftermarketBand: priceBand(156, 212, 300),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'BMW 3-Series E46 325i (2003-2005)',
-    part: 'Catalytic converter',
-    newBand: priceBand(1184, 1184, 1184),
-    aftermarketBand: priceBand(160, 700, 900),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-
-  {
-    modelFamily: 'Toyota 4Runner (2014)',
-    part: 'Engine assembly (4.0 1GRFE)',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(4685, 4685, 4685),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Toyota 4Runner (2014)',
-    part: 'Transmission assembly',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: null,
-    evidence: 'ASK',
-    notes: 'Listing exists but sampled pricing spread was not stable.'
-  },
-  {
-    modelFamily: 'Toyota 4Runner (2014)',
-    part: 'ECU / PCM',
-    newBand: null,
-    aftermarketBand: null,
-    usedBand: priceBand(81, 140, 195),
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Toyota 4Runner (2014)',
-    part: 'Headlight assembly',
-    newBand: null,
-    aftermarketBand: priceBand(98, 163, 769),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Toyota 4Runner (2014)',
-    part: 'Catalytic converter / exhaust manifold',
-    newBand: priceBand(1420, 1420, 1420),
-    aftermarketBand: priceBand(195, 653, 900),
-    usedBand: null,
-    evidence: 'ASK'
-  },
-
-  {
-    modelFamily: 'Chevrolet Camaro Classic (1970-1981)',
-    part: 'Quarter panel (full)',
-    newBand: priceBand(437, 491, 509),
-    aftermarketBand: priceBand(116, 200, 350),
-    usedBand: null,
-    evidence: 'ASK',
-    notes: 'Aftermarket/reman column includes patch/partial panel range.'
-  },
-  {
-    modelFamily: 'Chevrolet Camaro Classic (1970-1981)',
-    part: 'Weatherstrip kit',
-    newBand: priceBand(115, 182, 240),
-    aftermarketBand: null,
-    usedBand: null,
-    evidence: 'ASK'
-  },
-  {
-    modelFamily: 'Chevrolet Camaro Classic (1970-1981)',
-    part: 'Crate/performance engine (proxy)',
-    newBand: priceBand(8699, 8699, 8699),
-    aftermarketBand: null,
-    usedBand: null,
-    evidence: 'ASK'
+    manufacturerGroup: 'Ford',
+    partCategory: 'ECU',
+    partSubtypes: 'ECM/PCM, BCM, SRS module, ABS module',
+    usedPriceCurrentUsd: 27.92,
+    newOemPriceCurrentUsd: 1009.97,
+    usedPrice2021Usd: 22.3,
+    usedPrice2016Usd: 21.64,
+    usedPrice2006Usd: 17.07,
+    usedPrice1996Usd: 15.28,
+    usedNewRatioCurrent: 0.0277,
+    usedPriceSdCurrentUsd: 13.96,
+    newOemPriceSdCurrentUsd: 302.99,
+    usedSampleNCurrent: 2,
+    newOemSampleNCurrent: 1,
+    assumedRegion: 'US',
+    assumedVehicleAgeBand: '8-12 years',
+    assumedMileageBand: '100k-150k',
+    assumedConditionBand: 'grade B (good working, cosmetic wear)',
+    notesConditionFitment: 'Programming and immobilizer pairing are primary value-risk drivers.',
+    imputationFlags: 'historical_used=CPI_parts_backcast; brand_scaling=alt+headlight_multipliers; sd=CV_imputed'
   }
 ];
 
@@ -2038,67 +1927,48 @@ function PartMatrixPanel({
   setQuery: (value: string) => void;
   onOpenMarketplace: () => void;
 }) {
-  const [modelFilter, setModelFilter] = useState<'All' | string>('All');
-  const [partFilter, setPartFilter] = useState<'All' | string>('All');
-  const [conditionFilter, setConditionFilter] = useState<'All' | 'New' | 'Aftermarket/Reman' | 'Used'>('All');
+  const [manufacturerFilter, setManufacturerFilter] = useState<'All' | ManufacturerGroup>('All');
+  const [partCategoryFilter, setPartCategoryFilter] = useState<'All' | ResearchPartCategory>('All');
 
   const normalizedQuery = query.trim().toLowerCase();
 
-  const modelOptions = useMemo(
-    () => ['All', ...Array.from(new Set(PART_PRICE_MATRIX_ROWS.map((row) => row.modelFamily)))],
+  const manufacturerOptions = useMemo(
+    () => ['All', ...Array.from(new Set(USED_PARTS_MATRIX_ROWS.map((row) => row.manufacturerGroup)))],
     []
   );
 
-  const partOptions = useMemo(
-    () => ['All', ...Array.from(new Set(PART_PRICE_MATRIX_ROWS.map((row) => row.part)))],
+  const partCategoryOptions = useMemo(
+    () => ['All', ...Array.from(new Set(USED_PARTS_MATRIX_ROWS.map((row) => row.partCategory)))],
     []
   );
-
-  const hasBandValue = (band: PriceBand | null) =>
-    Boolean(band && [band.low, band.mid, band.high].some((value) => typeof value === 'number'));
-
-  const formatBand = (band: PriceBand | null) => {
-    if (!hasBandValue(band)) return '—';
-    return [band?.low, band?.mid, band?.high].map((value) => (value == null ? '—' : fmtMoney(value))).join(' / ');
-  };
-
-  const median = (band: PriceBand | null) => (band?.mid == null ? null : band.mid);
-
-  const formatDelta = (base: number | null, compare: number | null) => {
-    if (base == null || compare == null) return '—';
-    const delta = compare - base;
-    return `${delta >= 0 ? '+' : '-'}${fmtMoney(Math.abs(delta))}`;
-  };
-
-  const deltaTone = (base: number | null, compare: number | null) => {
-    if (base == null || compare == null) return 'text-zinc-500';
-    const delta = compare - base;
-    if (delta > 0) return 'text-rose-700';
-    if (delta < 0) return 'text-emerald-700';
-    return 'text-zinc-700';
-  };
 
   const filteredRows = useMemo(() => {
-    return PART_PRICE_MATRIX_ROWS.filter((row) => {
-      if (modelFilter !== 'All' && row.modelFamily !== modelFilter) return false;
-      if (partFilter !== 'All' && row.part !== partFilter) return false;
-      if (conditionFilter === 'New' && !hasBandValue(row.newBand)) return false;
-      if (conditionFilter === 'Aftermarket/Reman' && !hasBandValue(row.aftermarketBand)) return false;
-      if (conditionFilter === 'Used' && !hasBandValue(row.usedBand)) return false;
+    return USED_PARTS_MATRIX_ROWS.filter((row) => {
+      if (manufacturerFilter !== 'All' && row.manufacturerGroup !== manufacturerFilter) return false;
+      if (partCategoryFilter !== 'All' && row.partCategory !== partCategoryFilter) return false;
       if (!normalizedQuery) return true;
-      const haystack = [row.modelFamily, row.part, row.notes ?? ''].join(' ').toLowerCase();
+      const haystack = [
+        row.manufacturerGroup,
+        row.partCategory,
+        row.partSubtypes,
+        row.notesConditionFitment,
+        row.imputationFlags
+      ]
+        .join(' ')
+        .toLowerCase();
       return haystack.includes(normalizedQuery);
     });
-  }, [conditionFilter, modelFilter, normalizedQuery, partFilter]);
+  }, [manufacturerFilter, normalizedQuery, partCategoryFilter]);
 
-  const modelCount = useMemo(() => new Set(PART_PRICE_MATRIX_ROWS.map((row) => row.modelFamily)).size, []);
-  const rowCountWithAllConditions = useMemo(
-    () =>
-      PART_PRICE_MATRIX_ROWS.filter(
-        (row) => hasBandValue(row.newBand) && hasBandValue(row.aftermarketBand) && hasBandValue(row.usedBand)
-      ).length,
-    []
-  );
+  const manufacturerCount = useMemo(() => new Set(USED_PARTS_MATRIX_ROWS.map((row) => row.manufacturerGroup)).size, []);
+  const categoryCount = useMemo(() => new Set(USED_PARTS_MATRIX_ROWS.map((row) => row.partCategory)).size, []);
+
+  const cpiStart = CPI_PARTS_ANCHORS.find((row) => row.year === 1996)?.index ?? 0;
+  const cpiEnd = CPI_PARTS_ANCHORS.find((row) => row.year === 2026)?.index ?? 0;
+  const cpiGrowthPct = cpiStart > 0 ? ((cpiEnd - cpiStart) / cpiStart) * 100 : 0;
+
+  const formatRatio = (ratio: number) => `${(ratio * 100).toFixed(1)}%`;
+  const formatMultiplier = (mult: number) => `${mult.toFixed(3)}x`;
 
   return (
     <div className="space-y-6">
@@ -2106,10 +1976,10 @@ function PartMatrixPanel({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="text-xs font-bold text-zinc-500">Part Matrix</div>
-            <div className="mt-1 text-2xl font-black">Price Difference Matrix (New vs Aftermarket/Reman vs Used)</div>
+            <div className="mt-1 text-2xl font-black">Used Automotive Parts Market Matrix (1996-2026)</div>
             <div className="mt-2 max-w-4xl text-sm text-zinc-600">
-              This table focuses only on condition-based price differences for each car/part row in the matrix. Values are
-              shown as low / median / high estimated worth bands in USD.
+              U.S.-assumed research dataset showing used-part pricing by manufacturer group and part category, with current
+              price anchors plus CPI-backcasted 2021, 2016, 2006, and 1996 reference values.
             </div>
           </div>
           <button
@@ -2123,22 +1993,28 @@ function PartMatrixPanel({
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
             <div className="inline-flex items-center gap-2 text-xs font-black text-zinc-500">
-              <Table2 className="h-4 w-4" /> Model families
+              <Table2 className="h-4 w-4" /> Research window
             </div>
-            <div className="mt-2 text-sm text-zinc-700">{modelCount} models represented</div>
+            <div className="mt-2 text-sm text-zinc-700">1996 to 2026</div>
           </div>
           <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
             <div className="inline-flex items-center gap-2 text-xs font-black text-zinc-500">
-              <TrendingUp className="h-4 w-4" /> Part rows
+              <Info className="h-4 w-4" /> Market assumption
             </div>
-            <div className="mt-2 text-sm text-zinc-700">{PART_PRICE_MATRIX_ROWS.length} car-part rows with condition bands</div>
+            <div className="mt-2 text-sm text-zinc-700">United States (U.S.) reference market</div>
           </div>
           <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4">
             <div className="inline-flex items-center gap-2 text-xs font-black text-zinc-500">
-              <Tag className="h-4 w-4" /> Full condition coverage
+              <TrendingUp className="h-4 w-4" /> CPI parts index change
             </div>
             <div className="mt-2 text-sm text-zinc-700">
-              {rowCountWithAllConditions} rows currently have New + Aftermarket/Reman + Used populated.
+              {cpiStart.toFixed(3)} to {cpiEnd.toFixed(3)} ({cpiGrowthPct.toFixed(1)}%)
+            </div>
+          </div>
+          <div className="rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-4 md:col-span-3">
+            <div className="text-sm text-zinc-700">
+              Loaded {USED_PARTS_MATRIX_ROWS.length} detailed matrix rows across {manufacturerCount} manufacturer groups and{' '}
+              {categoryCount} part categories from the 1996-2026 deep research dataset.
             </div>
           </div>
         </div>
@@ -2154,113 +2030,96 @@ function PartMatrixPanel({
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search model family or part..."
+                placeholder="Search manufacturer, part category, subtype, or notes..."
                 className="w-full bg-transparent text-sm outline-none"
               />
             </div>
           </div>
           <div>
-            <label className="text-xs font-bold text-zinc-600">Model family</label>
+            <label className="text-xs font-bold text-zinc-600">Manufacturer group</label>
             <select
-              value={modelFilter}
-              onChange={(e) => setModelFilter(e.target.value)}
+              value={manufacturerFilter}
+              onChange={(e) => setManufacturerFilter(e.target.value as 'All' | ManufacturerGroup)}
               className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
             >
-              {modelOptions.map((model) => (
-                <option key={model} value={model}>
-                  {model}
+              {manufacturerOptions.map((manufacturer) => (
+                <option key={manufacturer} value={manufacturer}>
+                  {manufacturer}
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="text-xs font-bold text-zinc-600">Part type</label>
+            <label className="text-xs font-bold text-zinc-600">Part category</label>
             <select
-              value={partFilter}
-              onChange={(e) => setPartFilter(e.target.value)}
+              value={partCategoryFilter}
+              onChange={(e) => setPartCategoryFilter(e.target.value as 'All' | ResearchPartCategory)}
               className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
             >
-              {partOptions.map((part) => (
-                <option key={part} value={part}>
-                  {part}
+              {partCategoryOptions.map((partCategory) => (
+                <option key={partCategory} value={partCategory}>
+                  {partCategory}
                 </option>
               ))}
             </select>
           </div>
-          <div>
-            <label className="text-xs font-bold text-zinc-600">Condition availability</label>
-            <select
-              value={conditionFilter}
-              onChange={(e) => setConditionFilter(e.target.value as 'All' | 'New' | 'Aftermarket/Reman' | 'Used')}
-              className="mt-1 w-full rounded-2xl border border-[#dbe3ef] bg-white px-3 py-2 text-sm outline-none"
-            >
-              <option value="All">All rows</option>
-              <option value="New">Rows with New pricing</option>
-              <option value="Aftermarket/Reman">Rows with Aftermarket/Reman pricing</option>
-              <option value="Used">Rows with Used pricing</option>
-            </select>
-          </div>
+          <div />
           <div className="text-right text-xs font-bold text-zinc-500">
-            Showing {filteredRows.length} of {PART_PRICE_MATRIX_ROWS.length}
+            Showing {filteredRows.length} of {USED_PARTS_MATRIX_ROWS.length}
           </div>
         </div>
       </div>
 
       <div className="overflow-hidden rounded-[32px] border border-[#dbe3ef] bg-white shadow-sm">
         <div className="border-b border-[#dbe3ef] bg-[#f5f7fb] px-5 py-4">
-          <div className="text-sm font-black">Price differences by car part condition</div>
-          <div className="mt-1 text-xs text-zinc-600">
-            L / M / H = Low / Median / High estimated worth in USD.
-          </div>
+          <div className="text-sm font-black">Reference matrix rows (U.S. assumed, CPI-normalized history)</div>
+          <div className="mt-1 text-xs text-zinc-600">Current values plus backcasted 2021/2016/2006/1996 used-price references.</div>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-[1240px] w-full text-left">
+          <table className="min-w-[1500px] w-full text-left">
             <thead className="text-xs uppercase tracking-wide text-zinc-500">
               <tr>
-                <th className="px-4 py-3">Model family</th>
-                <th className="px-4 py-3">Part</th>
-                <th className="px-4 py-3">New worth (L / M / H)</th>
-                <th className="px-4 py-3">Aftermarket/Reman worth (L / M / H)</th>
-                <th className="px-4 py-3">Used worth (L / M / H)</th>
-                <th className="px-4 py-3">Median difference</th>
-                <th className="px-4 py-3">Evidence</th>
+                <th className="px-4 py-3">Manufacturer</th>
+                <th className="px-4 py-3">Part category</th>
+                <th className="px-4 py-3">Used 2026</th>
+                <th className="px-4 py-3">New OEM 2026</th>
+                <th className="px-4 py-3">Used/New ratio</th>
+                <th className="px-4 py-3">Used 2021</th>
+                <th className="px-4 py-3">Used 2016</th>
+                <th className="px-4 py-3">Used 2006</th>
+                <th className="px-4 py-3">Used 1996</th>
+                <th className="px-4 py-3">Sample N (Used/New)</th>
               </tr>
             </thead>
             <tbody className="text-sm">
               {filteredRows.map((row, idx) => {
-                const newMid = median(row.newBand);
-                const aftermarketMid = median(row.aftermarketBand);
-                const usedMid = median(row.usedBand);
-                const usedVsNew = formatDelta(newMid, usedMid);
-                const usedVsAftermarket = formatDelta(aftermarketMid, usedMid);
-
                 return (
-                  <tr key={`${row.modelFamily}-${row.part}-${idx}`} className="border-t border-[#edf2f8] align-top">
-                    <td className="px-4 py-3 font-bold text-zinc-800">{row.modelFamily}</td>
+                  <tr key={`${row.manufacturerGroup}-${row.partCategory}-${idx}`} className="border-t border-[#edf2f8] align-top">
+                    <td className="px-4 py-3 font-bold text-zinc-800">{row.manufacturerGroup}</td>
                     <td className="px-4 py-3 text-zinc-700">
-                      <div>{row.part}</div>
-                      {row.notes ? <div className="mt-1 text-xs text-zinc-500">{row.notes}</div> : null}
+                      <div className="font-bold text-zinc-800">{row.partCategory}</div>
+                      <div className="mt-1 text-xs text-zinc-500">{row.partSubtypes}</div>
                     </td>
-                    <td className="px-4 py-3 text-zinc-700">{formatBand(row.newBand)}</td>
-                    <td className="px-4 py-3 text-zinc-700">{formatBand(row.aftermarketBand)}</td>
-                    <td className="px-4 py-3 text-zinc-700">{formatBand(row.usedBand)}</td>
-                    <td className="px-4 py-3">
-                      <div className={`text-xs font-black ${deltaTone(newMid, usedMid)}`}>Used vs New: {usedVsNew}</div>
-                      <div className={`mt-1 text-xs font-black ${deltaTone(aftermarketMid, usedMid)}`}>
-                        Used vs Aftermarket: {usedVsAftermarket}
-                      </div>
-                    </td>
+                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.usedPriceCurrentUsd)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.newOemPriceCurrentUsd)}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex rounded-full border border-[#dbe3ef] bg-white px-2.5 py-1 text-xs font-black text-zinc-700">
-                        {row.evidence}
+                        {formatRatio(row.usedNewRatioCurrent)}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.usedPrice2021Usd)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.usedPrice2016Usd)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.usedPrice2006Usd)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.usedPrice1996Usd)}</td>
+                    <td className="px-4 py-3 text-zinc-700">
+                      {row.usedSampleNCurrent} / {row.newOemSampleNCurrent}
                     </td>
                   </tr>
                 );
               })}
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-8 text-sm text-zinc-600" colSpan={7}>
+                  <td className="px-4 py-8 text-sm text-zinc-600" colSpan={10}>
                     No matrix rows match current search/filter criteria.
                   </td>
                 </tr>
@@ -2269,9 +2128,95 @@ function PartMatrixPanel({
           </table>
         </div>
       </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="overflow-hidden rounded-[32px] border border-[#dbe3ef] bg-white shadow-sm">
+          <div className="border-b border-[#dbe3ef] bg-[#f5f7fb] px-5 py-4">
+            <div className="text-sm font-black">Manufacturer price multipliers</div>
+            <div className="mt-1 text-xs text-zinc-600">Derived from alternator + headlight MSRP anchors.</div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[320px] text-left text-sm">
+              <thead className="text-xs uppercase tracking-wide text-zinc-500">
+                <tr>
+                  <th className="px-4 py-3">Manufacturer</th>
+                  <th className="px-4 py-3">New OEM multiplier</th>
+                </tr>
+              </thead>
+              <tbody>
+                {USED_PARTS_MANUFACTURER_MULTIPLIERS.map((row) => (
+                  <tr key={row.manufacturerGroup} className="border-t border-[#edf2f8]">
+                    <td className="px-4 py-3 font-bold text-zinc-800">{row.manufacturerGroup}</td>
+                    <td className="px-4 py-3 text-zinc-700">{formatMultiplier(row.priceLevelMultiplierNewOem)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-[32px] border border-[#dbe3ef] bg-white shadow-sm">
+          <div className="border-b border-[#dbe3ef] bg-[#f5f7fb] px-5 py-4">
+            <div className="text-sm font-black">Per-manufacturer averages (current)</div>
+            <div className="mt-1 text-xs text-zinc-600">Equal-weight averages from normalized matrix values.</div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px] text-left text-sm">
+              <thead className="text-xs uppercase tracking-wide text-zinc-500">
+                <tr>
+                  <th className="px-4 py-3">Manufacturer</th>
+                  <th className="px-4 py-3">Avg used</th>
+                  <th className="px-4 py-3">Avg new OEM</th>
+                  <th className="px-4 py-3">Used/new</th>
+                </tr>
+              </thead>
+              <tbody>
+                {USED_PARTS_MANUFACTURER_AVERAGES.map((row) => (
+                  <tr key={row.manufacturerGroup} className="border-t border-[#edf2f8]">
+                    <td className="px-4 py-3 font-bold text-zinc-800">{row.manufacturerGroup}</td>
+                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.avgUsedPriceCurrentUsd)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.avgNewOemPriceCurrentUsd)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{formatRatio(row.avgUsedNewRatioCurrent)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-[32px] border border-[#dbe3ef] bg-white shadow-sm">
+          <div className="border-b border-[#dbe3ef] bg-[#f5f7fb] px-5 py-4">
+            <div className="text-sm font-black">Per-part-category averages (current)</div>
+            <div className="mt-1 text-xs text-zinc-600">Equal-weight averages across manufacturer groups.</div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px] text-left text-sm">
+              <thead className="text-xs uppercase tracking-wide text-zinc-500">
+                <tr>
+                  <th className="px-4 py-3">Part category</th>
+                  <th className="px-4 py-3">Avg used</th>
+                  <th className="px-4 py-3">Avg new OEM</th>
+                  <th className="px-4 py-3">Used/new</th>
+                </tr>
+              </thead>
+              <tbody>
+                {USED_PARTS_CATEGORY_AVERAGES.map((row) => (
+                  <tr key={row.partCategory} className="border-t border-[#edf2f8]">
+                    <td className="px-4 py-3 font-bold text-zinc-800">{row.partCategory}</td>
+                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.avgUsedPriceCurrentUsd)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{fmtMoney(row.avgNewOemPriceCurrentUsd)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{formatRatio(row.avgUsedNewRatioCurrent)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-        Converter and module pricing can carry extra legal/programming risk. Verify part number, emissions compliance, and
-        programming requirements before purchase.
+        Historical used-price columns are CPI-based backcasts, not direct transaction-series observations. ECU and safety
+        components require fitment/programming/provenance validation before purchase.
       </div>
     </div>
   );
