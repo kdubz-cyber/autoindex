@@ -1299,17 +1299,12 @@ function MarketplaceAnalysisPanel({ toast }: { toast: (msg: string) => void }) {
                   ) : null}
                   {!analysis.sourceFetched ? (
                     <div className="mt-1 text-xs text-amber-700">
-                      Live listing metadata unavailable. AutoIndex used fallback valuation logic.
-                    </div>
-                  ) : null}
-                  {analysis.listing.researchSource === 'web' ? (
-                    <div className="mt-1 text-xs text-emerald-700">
-                      Rarity and dealer anchor were enriched from online research signals.
+                      Live Facebook API ingestion is disabled. AutoIndex used copy/paste valuation logic.
                     </div>
                   ) : null}
                   {analysis.listing.researchSource === 'heuristic' ? (
                     <div className="mt-1 text-xs text-amber-700">
-                      Rarity and dealer anchor used model heuristics due limited online match confidence.
+                      Rarity and dealer anchor were estimated with built-in model heuristics.
                     </div>
                   ) : null}
                 </div>
