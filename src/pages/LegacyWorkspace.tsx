@@ -899,7 +899,7 @@ function ListingCard({ listing, vendor, onSave, onCart, onOpen }: ListingCardPro
           ) : null}
         </div>
 
-        <div className="mt-3 flex items-baseline justify-between">
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
           <div>
             <div className="text-lg font-black text-zinc-900">{fmtMoney(listing.price)}</div>
             {listing.msrp ? (
@@ -911,7 +911,7 @@ function ListingCard({ listing, vendor, onSave, onCart, onOpen }: ListingCardPro
               <div className="text-xs text-zinc-500">Market priced</div>
             )}
           </div>
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <div className="inline-flex items-center gap-2">
               <StarRow value={listing.rating} />
               <span className="text-xs font-black text-zinc-800">{listing.rating.toFixed(1)}</span>
@@ -2259,9 +2259,9 @@ export default function App() {
                 toast('Home');
               }}
             >
-              <img src={AUTO_INDEX_LOGO} alt="AutoIndex logo" className="h-9 w-auto rounded-xl sm:h-10" />
+              <img src={AUTO_INDEX_LOGO} alt="AutoIndex logo" className="h-7 w-auto rounded-xl sm:h-9 lg:h-10" />
               <div className="min-w-0 leading-tight">
-                <div className="truncate text-base font-extrabold tracking-tight sm:text-lg">AutoIndex</div>
+                <div className="truncate text-sm font-extrabold tracking-tight sm:text-lg">AutoIndex</div>
                 <div className="hidden text-xs text-zinc-500 sm:block">Parts pricing intelligence + marketplace</div>
               </div>
             </button>
@@ -2279,14 +2279,14 @@ export default function App() {
             <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 onClick={() => setVendorApplyOpen(true)}
-                className="hidden items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-sm font-extrabold hover:bg-[#f5f7fb] sm:inline-flex"
+                className="hidden items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-sm font-extrabold hover:bg-[#f5f7fb] md:inline-flex"
               >
                 <Store className="h-4 w-4" /> Become a vendor
               </button>
 
               <button
                 onClick={() => setSavedOpen(true)}
-                className="hidden items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-sm font-extrabold hover:bg-[#f5f7fb] sm:inline-flex"
+                className="hidden items-center gap-2 rounded-full border border-[#dbe3ef] bg-white px-3 py-2 text-sm font-extrabold hover:bg-[#f5f7fb] md:inline-flex"
               >
                 <Heart className="h-4 w-4" /> Saved <span className="rounded-full bg-[#e7f3ff] px-2 py-0.5 text-xs">{saved.length}</span>
               </button>
@@ -2349,7 +2349,7 @@ export default function App() {
             </div>
           </div>
 
-          <nav className="flex flex-wrap items-center gap-2 pb-3">
+          <nav className="no-scrollbar flex flex-nowrap items-center gap-2 overflow-x-auto pb-3 sm:flex-wrap sm:overflow-visible">
             {navTabs.map((t) => (
               <button
                 key={t}
@@ -2391,10 +2391,10 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6">
+      <main className="mx-auto max-w-7xl px-3 py-6 sm:px-4">
         {activeTab === 'Valuation' ? (
           <>
-            <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm">
+            <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-4 shadow-sm sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-bold text-zinc-500">Homepage Feature</div>
@@ -2620,13 +2620,13 @@ export default function App() {
               </div>
             </details>
 
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="no-scrollbar mt-6 flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
               <button
                 onClick={() => {
                   setCategory('All');
                   toast('Category: All');
                 }}
-                className={`rounded-full border px-4 py-2 text-sm font-extrabold ${
+                className={`shrink-0 rounded-full border px-4 py-2 text-sm font-extrabold ${
                   category === 'All' ? 'border-[#1877f2] bg-[#1877f2] text-white' : 'border-[#dbe3ef] bg-white hover:bg-[#f5f7fb]'
                 }`}
               >
@@ -2639,7 +2639,7 @@ export default function App() {
                     setCategory(c);
                     toast(`Category: ${c}`);
                   }}
-                  className={`rounded-full border px-4 py-2 text-sm font-extrabold ${
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm font-extrabold ${
                     category === c ? 'border-[#1877f2] bg-[#1877f2] text-white' : 'border-[#dbe3ef] bg-white hover:bg-[#f5f7fb]'
                   }`}
                 >
@@ -2863,7 +2863,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm">
+            <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-4 shadow-sm sm:p-6">
               <div className="text-xs font-bold text-zinc-500">Quick tools</div>
               <div className="mt-1 text-2xl font-black">Shortcuts</div>
 
@@ -2936,7 +2936,7 @@ export default function App() {
         {activeTab === 'Sell' ? (
           session?.role === 'individual' ? (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm lg:col-span-2">
+              <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-4 shadow-sm sm:p-6 lg:col-span-2">
                 <div className="text-xs font-bold text-zinc-500">Individual seller tools</div>
                 <div className="mt-1 text-2xl font-black">Create a listing</div>
                 <div className="mt-2 text-sm text-zinc-600">
@@ -3013,7 +3013,7 @@ export default function App() {
                   Publish listing
                 </button>
               </div>
-              <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm">
+              <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-4 shadow-sm sm:p-6">
                 <div className="text-xs font-bold text-zinc-500">My seller summary</div>
                 <div className="mt-1 text-2xl font-black">Listings & sales</div>
                 <div className="mt-4 rounded-2xl border border-[#dbe3ef] bg-[#f5f7fb] p-3">
@@ -3050,7 +3050,7 @@ export default function App() {
         {activeTab === 'Dashboard' ? (
           session?.role === 'vendor' ? (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm lg:col-span-2">
+              <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-4 shadow-sm sm:p-6 lg:col-span-2">
                 <div className="text-xs font-bold text-zinc-500">Vendor dashboard</div>
                 <div className="mt-1 text-2xl font-black">Sales performance</div>
                 <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -3059,7 +3059,7 @@ export default function App() {
                   <Stat icon={TrendingUp} label="Monthly sales" value={fmtMoney(vendorRevenue.monthly)} />
                 </div>
               </div>
-              <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm">
+              <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-4 shadow-sm sm:p-6">
                 <div className="text-xs font-bold text-zinc-500">Customer feedback</div>
                 <div className="mt-1 text-2xl font-black">Recent reviews</div>
                 <div className="mt-4 space-y-3">
@@ -3080,7 +3080,7 @@ export default function App() {
               </div>
             </div>
           ) : session?.role === 'admin' && adminRevenue ? (
-            <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-6 shadow-sm">
+            <div className="rounded-[32px] border border-[#dbe3ef] bg-white p-4 shadow-sm sm:p-6">
               <div className="text-xs font-bold text-zinc-500">Website administrator dashboard</div>
               <div className="mt-1 text-2xl font-black">Master sales overview</div>
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
